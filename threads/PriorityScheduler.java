@@ -327,10 +327,6 @@ public class PriorityScheduler extends Scheduler {
 		protected KThread thread;
 		/** The priority of the associated thread. */
 		protected int priority;
-
-		// ADDED
-		// The effective priority of the associated thread
-		protected int effectivePriority;
 		// Donation Queue that tracks donations from each thread
 		protected LinkedList<PriorityQueue> donateQueue = new LinkedList<PriorityQueue>();
 	}

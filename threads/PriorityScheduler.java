@@ -143,13 +143,23 @@ public class PriorityScheduler extends Scheduler {
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me
-
 			// ADDED
 
 			// Initial check of wait queue to see we need to keep going or not
 			if(waitQueue.isEmpty())
 				return null;
 
+			// Don't use this it is copied
+			// vvvvvvvvvvvvvvvvvvvvvvv
+			// Checks if there is a thread with a lock
+			if (lockThread != null) {
+				// Removes 
+				lockThread.donateQueue.remove(this);
+				// Need to refresh effective priority
+				lockThread.getEffectivePriority();
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^
+			
 			// Find next Thread 
 			ThreadState nextThread = pickNextThread();
 
@@ -173,7 +183,6 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected ThreadState pickNextThread() {
 			// implement me
-
 			//ADDED
 
 			// Our Next Thread
@@ -215,6 +224,8 @@ public class PriorityScheduler extends Scheduler {
 		// ADDED
 		// Linked List that store all the waiting threads in it
 		protected LinkedList<ThreadState> waitQueue = new LinkedList<ThreadState>();
+		// Tracks the thread with a lock
+		ThreadState lockThread = null;
 
 	}
 
@@ -281,6 +292,10 @@ public class PriorityScheduler extends Scheduler {
 			this.priority = priority;
 
 			// implement me
+			// ADDED
+
+			// Refresh effective priority
+			getEffectivePriority();
 		}
 
 		/**
@@ -297,7 +312,6 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
-
 			// ADDED
 
 			// Add this ThreadState to the wait queue
@@ -316,7 +330,6 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void acquire(PriorityQueue waitQueue) {
 			// implement me
-
 			// ADDED
 
 			// Remove this ThreadState from the wait queue to get ready

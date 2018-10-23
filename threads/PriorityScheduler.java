@@ -149,7 +149,7 @@ public class PriorityScheduler extends Scheduler {
 			// Initial check of wait queue to see we need to keep going or not
 			if(waitQueue.isEmpty())
 				return null;
-			
+
 			// Find next Thread 
 			ThreadState nextThread = pickNextThread();
 
@@ -254,13 +254,13 @@ public class PriorityScheduler extends Scheduler {
 		 * @return	the effective priority of the associated thread.
 		 */
 		public int getEffectivePriority() {
-			int effectivePriority = priority;		
+			effectivePriority = priority;		
 			for (PriorityQueue queue : donateQueue) {			// Run through donation queue
-				if (queue.transferPriority) {				// Is the queue flagged for donation?
+				if (queue.transferPriority) {					// Is the queue flagged for donation?
 					for (ThreadState state : queue.waitQueue) {	// Queue thread
 						int tmp = state.getPriority();
-						if (tmp > effectivePriority) {		// If the thread could use a boost...
-							effectivePriority = tmp;	// in priority, give it all the priority.
+						if (tmp > effectivePriority) {			// If the thread could use a boost...
+							effectivePriority = tmp;			// in priority, give it all the priority.
 						}
 					}
 				}
@@ -297,7 +297,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
-			
+
 			// ADDED
 
 			// Add this ThreadState to the wait queue
@@ -318,7 +318,7 @@ public class PriorityScheduler extends Scheduler {
 			// implement me
 
 			// ADDED
-			
+
 			// Remove this ThreadState from the wait queue to get ready
 			waitQueue.waitQueue.remove(this);
 		}	

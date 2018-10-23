@@ -316,11 +316,11 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void acquire(PriorityQueue waitQueue) {
 			// implement me
-			/*
-			 * ADDED
-			 * 
-			 * pull the specific thread from the waitQueue
-			 */
+
+			// ADDED
+			
+			// Remove this ThreadState from the wait queue to get ready
+			waitQueue.waitQueue.remove(this);
 		}	
 
 		/** The thread with which this object is associated. */	   

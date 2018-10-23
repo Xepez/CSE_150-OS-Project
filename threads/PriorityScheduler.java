@@ -153,13 +153,13 @@ public class PriorityScheduler extends Scheduler {
 			// vvvvvvvvvvvvvvvvvvvvvvv
 			// Checks if there is a thread with a lock
 			if (lockThread != null) {
-				// Removes 
+				// Removes this queue from the lock threads donation queue
 				lockThread.donateQueue.remove(this);
 				// Need to refresh effective priority
 				lockThread.getEffectivePriority();
 			}
 			// ^^^^^^^^^^^^^^^^^^^^^^^
-			
+
 			// Find next Thread 
 			ThreadState nextThread = pickNextThread();
 
@@ -183,7 +183,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected ThreadState pickNextThread() {
 			// implement me
-			//ADDED
+			// ADDED
 
 			// Our Next Thread
 			ThreadState pickedThread = null;
@@ -199,7 +199,7 @@ public class PriorityScheduler extends Scheduler {
 
 				// Checking if the picked thread hasn't been picked yet or
 				// if the our current max priority is smaller then our checked thread
-				if (pickedThread == null || (maxPriority < checkPriority)) {
+				if (pickedThread == null || (checkPriority > maxPriority)) {
 					// Set new max priority
 					pickedThread = checkThread;
 					maxPriority = checkPriority;
@@ -316,6 +316,15 @@ public class PriorityScheduler extends Scheduler {
 
 			// Add this ThreadState to the wait queue
 			waitQueue.waitQueue.add(this);
+
+			// Don't use this it is copied
+			// vvvvvvvvvvvvvvvvvvvvvvv
+			// If there exists a thread with a lock
+			if (waitQueue.lockThread != null) {
+				// Need to refresh effective priority
+				waitQueue.lockThread.getEffectivePriority();
+			}
+			// ^^^^^^^^^^^^^^^^^^^^^^^
 		}
 
 		/**
@@ -334,6 +343,16 @@ public class PriorityScheduler extends Scheduler {
 
 			// Remove this ThreadState from the wait queue to get ready
 			waitQueue.waitQueue.remove(this);
+
+			// Don't use this it is copied
+			// vvvvvvvvvvvvvvvvvvvvvvv
+			// Set this thread state to the thread with the lock
+			waitQueue.lockThread = this;
+			// Adds this queue to our donation queue
+			donateQueue.add(waitQueue);
+			// Need to refresh effective priority
+			getEffectivePriority();
+			// ^^^^^^^^^^^^^^^^^^^^^^^
 		}	
 
 		/** The thread with which this object is associated. */	   

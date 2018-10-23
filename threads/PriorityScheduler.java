@@ -232,10 +232,11 @@ public class PriorityScheduler extends Scheduler {
 		 *
 		 * @param	thread	the thread this state belongs to.
 		 */
+		private int effectivePriority;
 		public ThreadState(KThread thread) {
 			this.thread = thread;
-
 			setPriority(priorityDefault);
+			effectivePriority = priorityDefault;
 		}
 
 		/**
@@ -253,26 +254,19 @@ public class PriorityScheduler extends Scheduler {
 		 * @return	the effective priority of the associated thread.
 		 */
 		public int getEffectivePriority() {
-			// implement me
+			int effectivePriority = priority;		
+			for (PriorityQueue queue : donateQueue) {			// Run through donation queue
+				if (queue.transferPriority) {				// Is the queue flagged for donation?
+					for (ThreadState state : queue.waitQueue) {	// Queue thread
+						int tmp = state.getPriority();
+						if (tmp > effectivePriority) {		// If the thread could use a boost...
+							effectivePriority = tmp;	// in priority, give it all the priority.
+						}
+					}
+				}
+			}
 
-			/*
-			 * ADDED
-			 * 
-			 * get current priority
-			 * check if already have an eff_priority
-			 * if effPriority < new_priority
-			 * effPriority = new_priority
-			 * 
-			 * for each entry in donation queue
-			 * Check if transfer priority is true so can transfer priority
-			 * if (current_eff_priority < new donation_priority)
-			 * eff_priority = new donation_priority
-			 * 
-			 * save effective priority and return
-			 * 
-			 */
-
-			return priority;
+			return effectivePriority;
 		}
 
 		/**

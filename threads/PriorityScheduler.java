@@ -197,8 +197,11 @@ public class PriorityScheduler extends Scheduler {
 				// Our current thread priority we are checking
 				checkPriority = checkThread.effectivePriority;
 
-				// Checking if the picked thread hasn't been picked yet or
-				// if the our current max priority is smaller then our checked thread
+				/* Checking if the picked thread hasn't been picked yet or 
+				 * if the our current max priority is smaller then our checked thread.
+				 * 
+				 * Also ensures we pick the thread thats been the the queue the longest
+				 */
 				if (pickedThread == null || (checkPriority > maxPriority)) {
 					// Set new max priority
 					pickedThread = checkThread;

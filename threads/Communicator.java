@@ -10,10 +10,23 @@ import nachos.machine.*;
  * threads can be paired off at this point.
  */
 public class Communicator {
+	
+	//Monitor
+	Lock mutex;
+	Condition2 readyToListen;
+	Condition2 readyToSpeak;
+	int numListeners;
+	int numSpeakers;
+	Integer message;
+	
     /**
      * Allocate a new communicator.
      */
     public Communicator() {
+    	//Initialize monitor
+    	mutex = new Lock();
+    	readyToListen = new Condition2(mutex);
+    	readyToSpeak = new Condition2(mutex);
     }
 
     /**
@@ -27,6 +40,18 @@ public class Communicator {
      * @param	word	the integer to transfer.
      */
     public void speak(int word) {
+    	mutex.acquire();
+    	numSpeakers++;
+    	
+    	while (numListeners == 0 && message != null) { //Ensures there's at least one listener and not another speaker speaking
+    		readyToSpeak.sleep();
+    	}
+    	message = word;
+    	
+    	readyToListen.wake();
+    	
+    	numSpeakers--;
+    	mutex.release();
     }
 
     /**
@@ -36,6 +61,19 @@ public class Communicator {
      * @return	the integer transferred.
      */    
     public int listen() {
-	return 0;
+    	mutex.acquire();
+    	numListeners++;
+    	while (message == null){
+    		readyToListen.sleep();
+    	}
+    	
+    	int word = message.intValue();
+    	message = null;
+    	readyToSpeak.wake();
+    	
+    	mutex.release();
+    	return word;
     }
 }
+
+

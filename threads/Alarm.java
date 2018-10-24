@@ -33,11 +33,11 @@ public class Alarm {
 	public void timerInterrupt() {
 		boolean status = Machine.interrupt().disable();
 		while(!waitQueue.isEmpty()) {	//while there is a thread in wait queue
-			if(waitQueue.peek().wakeTime <= Machine.timer().getTime()) { //if 
-				waitQueue.poll().thread.ready();
+			if(waitQueue.peek().wakeTime <= Machine.timer().getTime()) { //check if it is time to wake up thread
+				waitQueue.poll().thread.ready();//wake
 			}
 			else {
-				break;	//end task
+				break;	//end iteration
 			}
 		}
 		Machine.interrupt().restore(status);

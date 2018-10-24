@@ -71,6 +71,7 @@ public class Communicator {
     	message = null;
     	readyToSpeak.wake();
     	
+	numListeners--;
     	mutex.release();
     	return word;
     }

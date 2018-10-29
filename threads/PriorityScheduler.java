@@ -4,8 +4,8 @@ import nachos.machine.*;
 import java.util.TreeSet;
 import java.util.HashSet;
 import java.util.Iterator;
-//ADDED
 import java.util.LinkedList;
+
 /**
  * A scheduler that chooses threads based on their priorities.
  *
@@ -17,7 +17,7 @@ import java.util.LinkedList;
  * thread that has been waiting longest.
  *
  * <p>
- * Essentially, a priority scheduler gives access in a round-robin fassion to
+ * Essentially, a priority scheduler gives access in a round-robin fassion (lol) to
  * all the highest-priority threads, and ignores all other threads. This has
  * the potential to
  * starve a thread if there's always a thread waiting with higher priority.
@@ -142,8 +142,6 @@ public class PriorityScheduler extends Scheduler {
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
-			// implement me
-			// ADDED
 
 			// Initial check of wait queue to see we need to keep going or not
 			if(waitQueue.isEmpty())
@@ -163,15 +161,16 @@ public class PriorityScheduler extends Scheduler {
 			// Find next Thread 
 			ThreadState nextThread = pickNextThread();
 
-			// If we got a thread from the pickNextThread fcn
-			if (nextThread != null) {
-				// Acquire our new thread
-				nextThread.acquire(this);
+			// If we didn't get a thread from the pickNextThread fcn
+			if (nextThread == null) {
+				return null;
 			}
-
+			
+			// Acquire our new thread
+			nextThread.acquire(this);
+			
 			// Return our ThreadState thread
 			return nextThread.thread;
-			//return null;
 		}
 
 		/**
@@ -182,40 +181,38 @@ public class PriorityScheduler extends Scheduler {
 		 *		return.
 		 */
 		protected ThreadState pickNextThread() {
-			// implement me
-			// ADDED
 
 			// Our Next Thread
 			ThreadState pickedThread = null;
-			// Max Threads Priority
-			int maxPriority = -999;
 			// Priority of the Current Thread
 			int checkPriority = -999;
+			// Max Threads Priority
+			int maxPriority = -999;
 
 			// Checks each thread state in our wait Queue
 			for (ThreadState checkThread : waitQueue) {
 				// Our current thread priority we are checking
-				checkPriority = checkThread.effectivePriority;
+				checkPriority = checkThread.effectivePriority;		// Maybe check if eff priority not working
 
 				/* Checking if the picked thread hasn't been picked yet or 
 				 * if the our current max priority is smaller then our checked thread.
 				 * 
 				 * Also ensures we pick the thread thats been the the queue the longest
 				 */
-				if (pickedThread == null || (checkPriority > maxPriority)) {
-					// Set new max priority
-					pickedThread = checkThread;
+				if ((checkPriority > maxPriority) || pickedThread == null) {
+					// Sets new max priority & our new priority
 					maxPriority = checkPriority;
+					pickedThread = checkThread;
 				}				
 			}
 
 			return pickedThread;
-			//return null;
 		}
 
 		public void print() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me (if you want)
+			// no
 		}
 
 		/**
@@ -223,13 +220,10 @@ public class PriorityScheduler extends Scheduler {
 		 * threads to the owning thread.
 		 */
 		public boolean transferPriority;
-
-		// ADDED
 		// Linked List that store all the waiting threads in it
 		protected LinkedList<ThreadState> waitQueue = new LinkedList<ThreadState>();
 		// Tracks the thread with a lock
 		ThreadState lockThread = null;
-
 	}
 
 	/**
@@ -246,7 +240,7 @@ public class PriorityScheduler extends Scheduler {
 		 *
 		 * @param	thread	the thread this state belongs to.
 		 */
-		private int effectivePriority;
+		protected int effectivePriority;
 		public ThreadState(KThread thread) {
 			this.thread = thread;
 			setPriority(priorityDefault);
@@ -268,18 +262,32 @@ public class PriorityScheduler extends Scheduler {
 		 * @return	the effective priority of the associated thread.
 		 */
 		public int getEffectivePriority() {
-			effectivePriority = priority;		
-			for (PriorityQueue queue : donateQueue) {			// Run through donation queue
-				if (queue.transferPriority) {					// Is the queue flagged for donation?
-					for (ThreadState state : queue.waitQueue) {	// Queue thread
-						int tmp = state.getPriority();
-						if (tmp > effectivePriority) {			// If the thread could use a boost...
-							effectivePriority = tmp;			// in priority, give it all the priority.
-						}
+			// Our effective priority should never be lower than our priority
+			effectivePriority = priority;
+			// Temp variable to check the current thread we are checking priority
+			int checkPriority = -999;
+			
+			// Checks each donation that this thread state has gotten
+ 			for (PriorityQueue checkQueue : donateQueue) {
+ 				// Checks if the queue we are looking at allows donations
+				if (checkQueue.transferPriority) {
+					/*
+					 *  If donations are allowed goes through the queue to find the thread
+					 *  with the highest priority
+					 */
+					for (ThreadState checkState : checkQueue.waitQueue) {
+						// Our current thread priority we are checking
+						checkPriority = checkState.getPriority();
+						/*
+						 *  If the new thread has a larger priority
+						 *  Set that priority to our current thread effective priority
+						 */
+						if (checkPriority > effectivePriority)
+							effectivePriority = checkPriority;
 					}
 				}
 			}
-
+ 			
 			return effectivePriority;
 		}
 
@@ -293,9 +301,6 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
-
-			// implement me
-			// ADDED
 
 			// Refresh effective priority
 			getEffectivePriority();
@@ -314,8 +319,6 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#waitForAccess
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
-			// implement me
-			// ADDED
 
 			// Add this ThreadState to the wait queue
 			waitQueue.waitQueue.add(this);
@@ -341,8 +344,6 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#nextThread
 		 */
 		public void acquire(PriorityQueue waitQueue) {
-			// implement me
-			// ADDED
 
 			// Remove this ThreadState from the wait queue to get ready
 			waitQueue.waitQueue.remove(this);

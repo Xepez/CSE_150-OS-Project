@@ -193,7 +193,8 @@ public class PriorityScheduler extends Scheduler {
 			for (ThreadState checkThread : waitQueue) {
 				// Our current thread priority we are checking
 				checkPriority = checkThread.effectivePriority;		// Maybe check if eff priority not working
-
+				//checkPriority = checkThread.getEffectivePriority();
+				
 				/* Checking if the picked thread hasn't been picked yet or 
 				 * if the our current max priority is smaller then our checked thread.
 				 * 
@@ -265,7 +266,7 @@ public class PriorityScheduler extends Scheduler {
 			// Our effective priority should never be lower than our priority
 			effectivePriority = priority;
 			// Temp variable to check the current thread we are checking priority
-			int checkPriority = -999;
+			int checkEffPriority = -999;
 			
 			// Checks each donation that this thread state has gotten
  			for (PriorityQueue checkQueue : donateQueue) {
@@ -276,14 +277,20 @@ public class PriorityScheduler extends Scheduler {
 					 *  with the highest priority
 					 */
 					for (ThreadState checkState : checkQueue.waitQueue) {
-						// Our current thread priority we are checking
-						checkPriority = checkState.getPriority();
+						/*
+						 *  Our current thread effective priority we are checking
+						 *  
+						 *  We check effective priority since threads can pass their priorities up a chain
+						 *  like if one thread is waiting for one thread that is waiting for one thread
+						 *  we need to pass that priority up to ensure that we can go back through that chain
+						 */
+						checkEffPriority = checkState.getEffectivePriority();
 						/*
 						 *  If the new thread has a larger priority
 						 *  Set that priority to our current thread effective priority
 						 */
-						if (checkPriority > effectivePriority)
-							effectivePriority = checkPriority;
+						if (checkEffPriority > effectivePriority)
+							effectivePriority = checkEffPriority;
 					}
 				}
 			}

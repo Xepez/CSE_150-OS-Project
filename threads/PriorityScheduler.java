@@ -147,8 +147,6 @@ public class PriorityScheduler extends Scheduler {
 			if(waitQueue.isEmpty())
 				return null;
 
-			// Don't use this it is copied
-			// vvvvvvvvvvvvvvvvvvvvvvv
 			// Checks if there is a thread with a lock
 			if (lockThread != null) {
 				// Removes this queue from the lock threads donation queue
@@ -156,7 +154,6 @@ public class PriorityScheduler extends Scheduler {
 				// Need to refresh effective priority
 				lockThread.getEffectivePriority();
 			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^
 
 			// Find next Thread 
 			ThreadState nextThread = pickNextThread();
@@ -221,10 +218,10 @@ public class PriorityScheduler extends Scheduler {
 		 * threads to the owning thread.
 		 */
 		public boolean transferPriority;
+		// Tracks threads with a lock
+		ThreadState lockThread = null;
 		// Linked List that store all the waiting threads in it
 		protected LinkedList<ThreadState> waitQueue = new LinkedList<ThreadState>();
-		// Tracks the thread with a lock
-		ThreadState lockThread = null;
 	}
 
 	/**
@@ -330,14 +327,11 @@ public class PriorityScheduler extends Scheduler {
 			// Add this ThreadState to the wait queue
 			waitQueue.waitQueue.add(this);
 
-			// Don't use this it is copied
-			// vvvvvvvvvvvvvvvvvvvvvvv
 			// If there exists a thread with a lock
 			if (waitQueue.lockThread != null) {
 				// Need to refresh effective priority
 				waitQueue.lockThread.getEffectivePriority();
 			}
-			// ^^^^^^^^^^^^^^^^^^^^^^^
 		}
 
 		/**
@@ -355,15 +349,12 @@ public class PriorityScheduler extends Scheduler {
 			// Remove this ThreadState from the wait queue to get ready
 			waitQueue.waitQueue.remove(this);
 
-			// Don't use this it is copied
-			// vvvvvvvvvvvvvvvvvvvvvvv
 			// Set this thread state to the thread with the lock
 			waitQueue.lockThread = this;
 			// Adds this queue to our donation queue
 			donateQueue.add(waitQueue);
 			// Need to refresh effective priority
 			getEffectivePriority();
-			// ^^^^^^^^^^^^^^^^^^^^^^^
 		}	
 
 		/** The thread with which this object is associated. */	   

@@ -148,17 +148,8 @@ if (child => remainChild){
      passengers = remainChild;
      boatLocation = lock.sleep;
  }}
+} 
  
- 
-}
 
-/*
-staic void Test(){
 
-    system.out.println( " All Cross on the boat")
 
-    bog.AdultRideToOahu();
-    bog.AdultRowToMolokai();
-    bog.ChildRowToMolokai();
-    bog.ChildRideToMolokai();
-} */

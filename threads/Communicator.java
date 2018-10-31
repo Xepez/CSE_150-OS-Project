@@ -10,7 +10,7 @@ import nachos.machine.*;
  * threads can be paired off at this point.
  */
 public class Communicator {
-	
+
 	//Monitor
 	Lock mutex;
 	Condition readyToListen;
@@ -18,63 +18,63 @@ public class Communicator {
 	int numListeners;
 	int numSpeakers;
 	Integer message;
-	
-    /**
-     * Allocate a new communicator.
-     */
-    public Communicator() {
-    	//Initialize monitor
-    	mutex = new Lock();
-    	readyToListen = new Condition(mutex);
-    	readyToSpeak = new Condition(mutex);
-    }
 
-    /**
-     * Wait for a thread to listen through this communicator, and then transfer
-     * <i>word</i> to the listener.
-     *
-     * <p>
-     * Does not return until this thread is paired up with a listening thread.
-     * Exactly one listener should receive <i>word</i>.
-     *
-     * @param	word	the integer to transfer.
-     */
-    public void speak(int word) {
-    	mutex.acquire();
-    	numSpeakers++;
-    	
-    	while (numListeners == 0 && message != null) { //Ensures there's at least one listener and not another speaker speaking
-    		readyToSpeak.sleep();
-    	}
-    	message = word;
-    	
-    	readyToListen.wake();
-    	
-    	numSpeakers--;
-    	mutex.release();
-    }
+	/**
+	 * Allocate a new communicator.
+	 */
+	public Communicator() {
+		//Initialize monitor
+		mutex = new Lock();
+		readyToListen = new Condition(mutex);
+		readyToSpeak = new Condition(mutex);
+	}
 
-    /**
-     * Wait for a thread to speak through this communicator, and then return
-     * the <i>word</i> that thread passed to <tt>speak()</tt>.
-     *
-     * @return	the integer transferred.
-     */    
-    public int listen() {
-    	mutex.acquire();
-    	numListeners++;
-    	while (message == null){
-    		readyToListen.sleep();
-    	}
-    	
-    	int word = message.intValue();
-    	message = null;
-    	readyToSpeak.wake();
-    	
-	numListeners--;
-    	mutex.release();
-    	return word;
-    }
+	/**
+	 * Wait for a thread to listen through this communicator, and then transfer
+	 * <i>word</i> to the listener.
+	 *
+	 * <p>
+	 * Does not return until this thread is paired up with a listening thread.
+	 * Exactly one listener should receive <i>word</i>.
+	 *
+	 * @param	word	the integer to transfer.
+	 */
+	public void speak(int word) {
+		mutex.acquire();
+		numSpeakers++;
+
+		while (numListeners == 0 && message != null) { //Ensures there's at least one listener and not another speaker speaking
+			readyToSpeak.sleep();
+		}
+		message = word;
+
+		readyToListen.wake();
+
+		numSpeakers--;
+		mutex.release();
+	}
+
+	/**
+	 * Wait for a thread to speak through this communicator, and then return
+	 * the <i>word</i> that thread passed to <tt>speak()</tt>.
+	 *
+	 * @return	the integer transferred.
+	 */    
+	public int listen() {
+		mutex.acquire();
+		numListeners++;
+		while (message == null){
+			readyToListen.sleep();
+		}
+
+		int word = message.intValue();
+		message = null;
+		readyToSpeak.wake();
+
+		numListeners--;
+		mutex.release();
+		return word;
+	}
 }
 
 

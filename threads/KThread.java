@@ -191,9 +191,18 @@ public class KThread {
 		Lib.assertTrue(toBeDestroyed == null);
 		toBeDestroyed = currentThread;
 
-
 		currentThread.status = statusFinished;
-
+		
+		KThread checkThread = currentThread.joinWaitQueue.nextThread();
+		// Checks if our waiting to join queue is empty
+		while (checkThread != null) {
+			// If the queue isn't empty
+			// Readys up the next Thread in the queue
+			checkThread.ready();
+			// Sets to next Thread in the queue
+			checkThread = currentThread.joinWaitQueue.nextThread();
+		}
+			
 		sleep();
 	}
 
@@ -277,10 +286,18 @@ public class KThread {
 
 		Lib.assertTrue(this != currentThread);
 
-		boolean interruptState = Machine.interrupt().disable();
-
+		boolean interruptState = Machine.interrupt().disable();			
+		
+		if (joinWaitQueue == null) {
+			// If we dont have join wait queue initialized
+			// Create a new Thread
+			joinWaitQueue = ThreadedKernel.scheduler.newThreadQueue(true);
+			// Fill the queue with this thread
+			joinWaitQueue.acquire(this);
+		}
+		
 		// If this thread is not finished yet
-		if (status != statusFinished) {
+		if (this.status != statusFinished) {
 			/*
 			 *  Place our current thread in a wait queue till can access
 			 *  and put to sleep for now

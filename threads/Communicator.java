@@ -13,8 +13,8 @@ public class Communicator {
 	
 	//Monitor
 	Lock mutex;
-	Condition2 readyToListen;
-	Condition2 readyToSpeak;
+	Condition readyToListen;
+	Condition readyToSpeak;
 	int numListeners;
 	int numSpeakers;
 	Integer message;
@@ -25,8 +25,8 @@ public class Communicator {
     public Communicator() {
     	//Initialize monitor
     	mutex = new Lock();
-    	readyToListen = new Condition2(mutex);
-    	readyToSpeak = new Condition2(mutex);
+    	readyToListen = new Condition(mutex);
+    	readyToSpeak = new Condition(mutex);
     }
 
     /**

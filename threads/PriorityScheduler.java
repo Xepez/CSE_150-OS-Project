@@ -139,6 +139,24 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			getThreadState(thread).acquire(this);
 		}
+		
+		public void addToQueue(ThreadState state) {
+			// Adds to our wait queue
+			this.waitQueue.add(state);
+			// Refreshs our effective priority
+			this.lockThread.getEffectivePriority();
+		}
+		
+		public void removeFromQueue(ThreadState state) {
+			// Removes from our wait queue
+			this.waitQueue.remove(state);
+			// Sets our new lock to inputed thread state
+			this.lockThread = state;
+			// Adds this to the states donation queue
+			state.donateQueue.add(this);
+			// Refreshs our effective priority
+			state.getEffectivePriority();
+		}
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
@@ -148,9 +166,9 @@ public class PriorityScheduler extends Scheduler {
 				return null;
 
 			// Checks if there is a thread with a lock
-			if (lockThread != null) {
-				// Removes this queue from the lock threads donation queue
-				lockThread.donateQueue.remove(this);
+			if (this.lockThread != null) {
+				// Removes this from the lock threads donation queue since no longer needed
+				this.lockThread.donateQueue.remove(this);
 				// Need to refresh effective priority
 				lockThread.getEffectivePriority();
 			}
@@ -165,7 +183,6 @@ public class PriorityScheduler extends Scheduler {
 			
 			// Acquire our new thread
 			nextThread.acquire(this);
-			
 			// Return our ThreadState thread
 			return nextThread.thread;
 		}
@@ -306,7 +323,7 @@ public class PriorityScheduler extends Scheduler {
 
 			this.priority = priority;
 
-			// Refresh effective priority
+			// Refreshs effective priority
 			getEffectivePriority();
 		}
 
@@ -324,13 +341,13 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 
-			// Add this ThreadState to the wait queue
-			waitQueue.waitQueue.add(this);
-
 			// If there exists a thread with a lock
 			if (waitQueue.lockThread != null) {
-				// Need to refresh effective priority
-				waitQueue.lockThread.getEffectivePriority();
+				// Add this ThreadState to the wait queue
+				waitQueue.addToQueue(this);
+			}
+			else {
+				waitQueue.waitQueue.add(this);
 			}
 		}
 
@@ -345,17 +362,9 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#nextThread
 		 */
 		public void acquire(PriorityQueue waitQueue) {
-
 			// Remove this ThreadState from the wait queue to get ready
-			waitQueue.waitQueue.remove(this);
-
-			// Set this thread state to the thread with the lock
-			waitQueue.lockThread = this;
-			// Adds this queue to our donation queue
-			donateQueue.add(waitQueue);
-			// Need to refresh effective priority
-			getEffectivePriority();
-		}	
+			waitQueue.removeFromQueue(this);
+		}
 
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;

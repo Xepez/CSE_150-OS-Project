@@ -308,12 +308,6 @@ public class KThread {
 			currentThread.sleep();
 		}
 
-		// OLD
-		//	if (status == statusFinished){
-		//		Machine.interrupt().restore(interruptState);
-		//		return;
-		//	}
-
 		Machine.interrupt().restore(interruptState);
 
 	}

@@ -140,38 +140,25 @@ public class PriorityScheduler extends Scheduler {
 			getThreadState(thread).acquire(this);
 		}
 		
-		public void addToQueue(ThreadState state) {
-			// Adds to our wait queue
-			this.waitQueue.add(state);
-			// Refreshs our effective priority
-			this.lockThread.getEffectivePriority();
-		}
-		
-		public void removeFromQueue(ThreadState state) {
-			// Removes from our wait queue
-			this.waitQueue.remove(state);
-			// Sets our new lock to inputed thread state
-			this.lockThread = state;
-			// Adds this to the states donation queue
-			state.donateQueue.add(this);
-			// Refreshs our effective priority
-			state.getEffectivePriority();
+		public void removeDonation() {
+			// Removes this from the lock threads donation queue since no longer needed
+			this.headLock.donateQueue.remove(this);
+			// Need to refresh effective priority
+			this.headLock.getEffectivePriority();
 		}
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 
+			// Checks if there is a thread with a lock
+			// Then removes its queue from the donation pool
+			if (this.headLock != null) {
+				removeDonation();
+			}
+			
 			// Initial check of wait queue to see we need to keep going or not
 			if(waitQueue.isEmpty())
 				return null;
-
-			// Checks if there is a thread with a lock
-			if (this.lockThread != null) {
-				// Removes this from the lock threads donation queue since no longer needed
-				this.lockThread.donateQueue.remove(this);
-				// Need to refresh effective priority
-				lockThread.getEffectivePriority();
-			}
 
 			// Find next Thread 
 			ThreadState nextThread = pickNextThread();
@@ -180,7 +167,7 @@ public class PriorityScheduler extends Scheduler {
 			if (nextThread == null) {
 				return null;
 			}
-			
+
 			// Acquire our new thread
 			nextThread.acquire(this);
 			// Return our ThreadState thread
@@ -208,7 +195,7 @@ public class PriorityScheduler extends Scheduler {
 				// Our current thread priority we are checking
 				checkPriority = checkThread.effectivePriority;		// Maybe check if eff priority not working
 				//checkPriority = checkThread.getEffectivePriority();
-				
+
 				/* Checking if the picked thread hasn't been picked yet or 
 				 * if the our current max priority is smaller then our checked thread.
 				 * 
@@ -236,7 +223,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public boolean transferPriority;
 		// Tracks threads with a lock
-		ThreadState lockThread = null;
+		ThreadState headLock = null;
 		// Linked List that store all the waiting threads in it
 		protected LinkedList<ThreadState> waitQueue = new LinkedList<ThreadState>();
 	}
@@ -281,10 +268,10 @@ public class PriorityScheduler extends Scheduler {
 			effectivePriority = priority;
 			// Temp variable to check the current thread we are checking priority
 			int checkEffPriority = -999;
-			
+
 			// Checks each donation that this thread state has gotten
- 			for (PriorityQueue checkQueue : donateQueue) {
- 				// Checks if the queue we are looking at allows donations
+			for (PriorityQueue checkQueue : donateQueue) {
+				// Checks if the queue we are looking at allows donations
 				if (checkQueue.transferPriority) {
 					/*
 					 *  If donations are allowed goes through the queue to find the thread
@@ -308,7 +295,7 @@ public class PriorityScheduler extends Scheduler {
 					}
 				}
 			}
- 			
+
 			return effectivePriority;
 		}
 
@@ -340,14 +327,13 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#waitForAccess
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
-
-			// If there exists a thread with a lock
-			if (waitQueue.lockThread != null) {
-				// Add this ThreadState to the wait queue
-				waitQueue.addToQueue(this);
-			}
-			else {
-				waitQueue.waitQueue.add(this);
+			Lib.assertTrue(Machine.interrupt().disabled());
+ 			// Add this ThreadState to the wait queue
+			waitQueue.waitQueue.add(this);
+ 			// If there exists a thread with a lock
+			if (waitQueue.headLock != null) {
+				// Need to refresh effective priority
+				waitQueue.headLock.getEffectivePriority();
 			}
 		}
 
@@ -362,8 +348,15 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#nextThread
 		 */
 		public void acquire(PriorityQueue waitQueue) {
+			Lib.assertTrue(Machine.interrupt().disabled());
 			// Remove this ThreadState from the wait queue to get ready
-			waitQueue.removeFromQueue(this);
+			waitQueue.waitQueue.remove(this);
+			// Set this thread state to the thread with the lock
+			waitQueue.headLock = this;
+			// Adds this queue to our donation queue
+			donateQueue.add(waitQueue);
+			// Need to refresh effective priority
+			getEffectivePriority();
 		}
 
 		/** The thread with which this object is associated. */	   

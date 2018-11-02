@@ -281,7 +281,7 @@ public class PriorityScheduler extends Scheduler {
 						 *  like if one thread is waiting for one thread that is waiting for one thread
 						 *  we need to pass that priority up to ensure that we can go back through that chain
 						 */
-						checkEffPriority = checkState.getEffectivePriority();
+						checkEffPriority = checkState.effectivePriority;
 						/*
 						 *  If the new thread has a larger priority
 						 *  Set that priority to our current thread effective priority

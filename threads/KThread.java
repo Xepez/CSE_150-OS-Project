@@ -193,14 +193,16 @@ public class KThread {
 
 		currentThread.status = statusFinished;
 		
-		KThread checkThread = currentThread.joinWaitQueue.nextThread();
-		// Checks if our waiting to join queue is empty
-		while (checkThread != null) {
-			// If the queue isn't empty
-			// Readys up the next Thread in the queue
-			checkThread.ready();
-			// Sets to next Thread in the queue
-			checkThread = currentThread.joinWaitQueue.nextThread();
+		if (currentThread.joinWaitQueue != null) {
+			KThread checkThread = currentThread.joinWaitQueue.nextThread();	// PROBLEM IS HERE WITH NEXT THREAD
+			// Checks if our waiting to join queue is empty
+			while (checkThread != null) {
+				// If the queue isn't empty
+				// Readys up the next Thread in the queue
+				checkThread.ready();
+				// Sets to next Thread in the queue
+				checkThread = currentThread.joinWaitQueue.nextThread();
+			}
 		}
 			
 		sleep();

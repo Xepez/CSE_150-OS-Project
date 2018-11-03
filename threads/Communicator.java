@@ -13,8 +13,8 @@ public class Communicator {
 
 	//Monitor
 	Lock mutex;
-	Condition readyToListen;
-	Condition readyToSpeak;
+	Condition2 readyToListen;
+	Condition2 readyToSpeak;
 	int numListeners;
 	int numSpeakers;
 	Integer message;
@@ -25,8 +25,8 @@ public class Communicator {
 	public Communicator() {
 		//Initialize monitor
 		mutex = new Lock();
-		readyToListen = new Condition(mutex);
-		readyToSpeak = new Condition(mutex);
+		readyToListen = new Condition2(mutex);
+		readyToSpeak = new Condition2(mutex);
 	}
 
 	/**
@@ -46,7 +46,7 @@ public class Communicator {
 		while (numListeners == 0 && message != null) { //Ensures there's at least one listener and not another speaker speaking
 			readyToSpeak.sleep();
 		}
-		message = word;
+		message = new Integer(word);
 
 		readyToListen.wake();
 

@@ -50,7 +50,7 @@ public class Communicator {
 
 		readyToListen.wake();
 
-		numSpeakers--;
+		numListeners--;
 		mutex.release();
 	}
 
@@ -71,7 +71,7 @@ public class Communicator {
 		message = null;
 		readyToSpeak.wake();
 
-		numListeners--;
+		numSpeakers--;
 		mutex.release();
 		return word;
 	}

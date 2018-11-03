@@ -6,8 +6,10 @@ import nachos.ag.BoatGrader;
 public class Boat
 {
 	static BoatGrader bg;
-	private static Lock Boat;
-	private static Lock Increment;
+	public static Lock Boat;
+	public static Lock Increment;
+	public boolean passengers;
+	public static Condition Boat, Incerment, Sleep, Wait;
 
 	public static void selfTest()
 	{
@@ -34,25 +36,25 @@ public class Boat
 		int ChildRideToMolokai,ChildRowToMolokai = 1;
 		int ChildMolokai,ChildOahu = 1;
 		int AdultMolokai,AdultOahu = 2;
-		int passengers = 0;
+		int passengers = true;
 
 		// Instantiate global variables here
-		this.AdultRowToMolokai = passengers;
-		this.AdultRowToOahu = passengers;
-		this.ChildRideToMolokai = child;
-		this.ChildRideToOahu = child;
-		this.ChildRowToMolokai = child;
-		this.ChildRowToOahu = child;
-		int remainChild =  passengers;
+		Comminicator = new Communicator();
+		Boat = new Lock();
+		Increment = new Lock();
+		Wait = new Lock();
+		Sleep = new Lock();
+		WakeCom = new Condition(Boat);
+		SleepCom = new Condition(Sleep);
+		IncCom = new Condition(Increment);
+		WaitCom = new Condition(Wait);
+		
+		
 
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
 
 
-		Boat = new Lock();
-		Increment = new Lock();
-		Wait = new Lock();
-		Sleep = new Lock();
 
 		/*Runnable r = new Runnable() {
 	    public void run() {
@@ -64,55 +66,54 @@ public class Boat
         t.fork();*/
 
 		for(int i =0; i < child; i++){
-			Kthread kt = new Kthread(new Runnable(){
+			Kthread t = new Kthread(new Runnable(){
 				public void run(){
 					childCrossed();
 				}});
-			thread.setName("Child Crossed" + i); 
-			thread.forkOff();
+			t.setName("Child Crossed" + i); 
+			t.fork();
 		}
 		// loop and thread/ runnables for adult
-		for(int i =0; i < passengers; i++){
-			Kthread kt = new Kthread(new Runnable(){
+		for(int i =0; i < adult; i++){
+			Kthread t = new Kthread(new Runnable(){
 				public void run(){
 					adultCrossed();
 				}});
-			thread.setName("Adult Crossed" + i); 
-			thread.forkOff();
+			t.setName("Adult Crossed" + i); 
+			t.fork();
 
 		}
 		return;
 
 	}
 
-	protected static void adultCrossed() {
+	//protected static void adultCrossed() {
 		// TODO Auto-generated method stub
 
 	}
-
-	static void AdultItinerary(int remainChild)
-	{
-		/* This is where you should put your solutions. Make calls
+/* This is where you should put your solutions. Make calls
 	   to the BoatGrader to show that it is synchronized. For
 	   example:
 	       bg.AdultRowToMolokai();
 	   indicates that an adult has rowed the boat across to Molokai
 		 */
 
+	static void AdultItinerary(int remainChild)
+	{ bg.initializeAdult();
+		
 		public void AdultRowToMolokai();
 		bg.AdultRowToMolokai();
 		if (adult => 0){
 			AdultRowToMolokai = true;
 			Molokai.aquire(); 
-			bog.adultCrossed();
+			bg.adultCrossed();
 			passengers = adult -1;
-			boatLocation = Lock.wait;
-			new Increment = passengers;
+			
 			system.out.println(" Adult is riding to Molokai");
 			else{
 				AdultRowToMolokai = false;
 				passengers = adult;
-				boatLocation = lock.sleep;
+				
 			}
 		}
 
@@ -120,24 +121,25 @@ public class Boat
 		bg.AdultRowToOahu();
 		if(adult => 0){
 			AdultRowToOahu = false;
-			boatLocation = lock.sleep;
+			
 			//Since an adult takes up 2 seats, an adult should never be piloting back to Oahu.
 		}
 
+	  static void ChildItinerary() {
+		  bg.initializeChild();
 		public void ChildRowToMolokai();
-		bog.ChildRowToMolokai();
+		bg.ChildRowToMolokai();
 		if (child < remainChild){
 			ChildRowToMolokai = true;
 			Molokai.aquire();
 			bg.childCrossed();
-			passenger = child -1;
-			boatLocation = Lock.wait;
-			new Increment = passengers;
+			passenger = true ;
+			
 			system.out.println(" Child is piloting to Molokai");
 			else{
 				ChildRowToMolokai = false;
 				passengers = remainChild;
-				boatLocation = lock.sleep;
+				
 			}
 		}
 
@@ -147,14 +149,14 @@ public class Boat
 			ChildRideToMolokai = true;
 			Molokai.aquire();
 			bg.childCrossed();
-			passenger = child -1;
-			boatLocation = Lock.wait;
-			new Increment = passengers;
+			passenger = true;
+			
+	
 			system.out.println(" Child is riding to Molokai");
 			else{
 				ChildRideToMolokai = false;
 				passengers = remainChild;
-				boatLocation = lock.sleep;
+				
 			}
 		}
 
@@ -164,14 +166,14 @@ public class Boat
 			ChildRowToOahu = true;
 			Oahu.aquire();
 			bg.childCrossed();
-			passenger = child -1;
-			boatLocation = Lock.wait;
-			new Increment = passengers;
+			passenger = true;
+			
+			
 			system.out.println(" Child is piloting back to Oahu");
 			else{
 				ChildRowToOahu = false;
 				passengers = remainChild;
-				boatLocation = lock.sleep;
+				
 			}
 		}
 		public void ChildRideToOahu();
@@ -180,28 +182,28 @@ public class Boat
 			ChildRowToOahu = true;
 			Oahu.aquire();
 			bg.childCrossed();
-			passenger = child -1;
-			boatLocation = Lock.wait;
-			new Increment = passengers;
+			passenger = true;
+			
+			
 			system.out.println(" Child is riding back to Oahu");
 			else{
 				ChildRideToOahu = false;
 				passengers = remainChild;
-				boatLocation = lock.sleep;
+				
 			}}
 	}
 
-	private static void ChildRideToMolokai() {
+	//private static void ChildRideToMolokai() {
 		// TODO Auto-generated method stub
 
 	}
 
-	static void ChildItinerary()
+	//static void ChildItinerary()
 	{
 	}
 
-	static void SampleItinerary()
-	{
+	//static void SampleItinerary()
+	/*{
 		// Please note that this isn't a valid solution (you can't fit
 		// all of them on the boat). Please also note that you may not
 		// have a single thread calculate a solution and then just play
@@ -213,4 +215,4 @@ public class Boat
 		bg.ChildRideToMolokai();
 	}
 
-}
+}*/

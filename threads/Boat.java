@@ -2,13 +2,10 @@ package nachos.threads;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import nachos.ag.BoatGrader;
+import nachos.threads.KThread;
 
-public class Boat
-{
-	static BoatGrader bg;
-
+public class Boat{
 	static Lock Boat;
-
 	static int numOfChildren;
 	static int numOfAdults;
 	static int BoatLocation;
@@ -18,30 +15,20 @@ public class Boat
 	static Condition childOahu;
 	static Condition adultMolokai;
 	static Condition adultOahu;
-
-
-
-
-
-	public static void selfTest()
-	{
+	public static void selfTest(){
 		BoatGrader b = new BoatGrader();
-
 		System.out.println("\n ***Testing Boats with only 2 children***");
 		begin(0, 2, b);
+		//System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
+		// begin(1, 2, b);
 
-		//	System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-		//  	begin(1, 2, b);
-
-		//  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-		//  	begin(3, 3, b);
+		// System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
+		// begin(3, 3, b);
 	}
-
-	public static void begin( int adults, int children, BoatGrader b )
-	{
+	public static void begin( int adults, int children, BoatGrader b ){
 		// Store the externally generated autograder in a class
 		// variable to be accessible by children.
-		bg = b;
+		BoatGrader bg = b;
 
 		// Instantiate global variables here
 		int Oahu = 0;
@@ -58,14 +45,6 @@ public class Boat
 		adultMolokai = new Condition(Boat);
 		adultOahu = new Condition(Boat);
 
-
-
-
-
-
-
-
-
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
 
@@ -80,7 +59,7 @@ public class Boat
         t.fork();*/
 
 		for(int i =0; i < children; i++){
-			Kthread t = new Kthread(new Runnable(){
+			KThread t = new KThread(new Runnable(){
 				public void run(){
 					ChildItinerary();
 				}});
@@ -89,21 +68,18 @@ public class Boat
 		}
 
 		for(int i =0; i < adults; i++){
-			Kthread t = new Kthread(new Runnable(){
+			KThread t = new KThread(new Runnable(){
 				public void run(){
 					AdultItinerary();
 				}});
 			t.setName("Adult Crossed" + i); 
 			t.fork();
-
 		}
-		if( children==0 && adults == 0){
+		if(children==0 && adults == 0){
 			allOver = true;
 		}
 
 	}
-
-
 	static void AdultItinerary(){
 
 		/* This is where you should put your solutions. Make calls
@@ -113,78 +89,10 @@ public class Boat
 	   indicates that an adult has rowed the boat across to Molokai
 		 */
 
-
-		if(numOfChildren == 0){
-			bg.AdultRideToMolokai();
-			numOfAdults--;
-			BoatLocation = 1;
-			adultMolokai.wake();
-			adultOahu.sleep();
-		}
-		else{
-			bg.AdultRowToMolokai();
-			numOfAdults++;
-			BoatLocation =0;
-			adultOahu.wake();
-			adultMolokai.sleep();
-		}
 	}
-
-
 	static void ChildItinerary(){
-		Boat.unlock();
-		if(numOfChildren < 3 && BoatLocation == 0){
-			bg.ChildRideToOahu();
-			numOfChildren--;
-			numOfChildren--;
-			childMolokai.sleep();
-			childOahu.wake();
-		}
-		else{
-			numOfChildren--;
-			childMolokai.wake();
-			childOahu.sleep();
-		}
-
-		if(numOfChildren < 3 && BoatLocation == 1){
-			bg.ChildRideToMolokai();
-			numOfChildren--;
-			numOfChildren--;
-			childMolokai.wake();
-			childOahu.sleep();
-		}
-		else{
-			numOfChildren--;
-			childMolokai.sleep();
-			childOahu.wake();
-		}
-
-		if( numOfChildren <2 && BoatLocation ==0){
-			bg.ChildRowToOahu();
-			numOfChildren++;
-			childOahu.wake();
-			childMolokai.sleep();
-		}
-		else {
-			numOfChildren--;
-			childOahu.sleep();
-			childMolokai.wake();
-		}
-		if(numOfChildren <2 && BoatLocation ==1){
-			bg.ChildRowToMolokai();
-			numOfChildren++;
-			childOahu.sleep();
-			childMolokai.wake();
-		}
-		else{
-			numOfChildren--;
-			childMolokai.sleep();
-			childOahu.sleep();
-		}
-
-		if(numOfChildren == 0 && BoatLocation == 0){
-			allOver =true;
-		}
+		//to implement
+		
 	}
 }
 

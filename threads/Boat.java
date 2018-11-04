@@ -114,11 +114,76 @@ public class Boat
 		 */
 
 
+		if(numOfChildren == 0){
+			bg.AdultRideToMolokai();
+			numOfAdults--;
+			BoatLocation = 1;
+			adultMolokai.wake();
+			adultOahu.sleep();
+		}
+		else{
+			bg.AdultRowToMolokai();
+			numOfAdults++;
+			BoatLocation =0;
+			adultOahu.wake();
+			adultMolokai.sleep();
+		}
 	}
 
 
 	static void ChildItinerary(){
-		
+		Boat.unlock();
+		if(numOfChildren < 3 && BoatLocation == 0){
+			bg.ChildRideToOahu();
+			numOfChildren--;
+			numOfChildren--;
+			childMolokai.sleep();
+			childOahu.wake();
+		}
+		else{
+			numOfChildren--;
+			childMolokai.wake();
+			childOahu.sleep();
+		}
+
+		if(numOfChildren < 3 && BoatLocation == 1){
+			bg.ChildRideToMolokai();
+			numOfChildren--;
+			numOfChildren--;
+			childMolokai.wake();
+			childOahu.sleep();
+		}
+		else{
+			numOfChildren--;
+			childMolokai.sleep();
+			childOahu.wake();
+		}
+
+		if( numOfChildren <2 && BoatLocation ==0){
+			bg.ChildRowToOahu();
+			numOfChildren++;
+			childOahu.wake();
+			childMolokai.sleep();
+		}
+		else {
+			numOfChildren--;
+			childOahu.sleep();
+			childMolokai.wake();
+		}
+		if(numOfChildren <2 && BoatLocation ==1){
+			bg.ChildRowToMolokai();
+			numOfChildren++;
+			childOahu.sleep();
+			childMolokai.wake();
+		}
+		else{
+			numOfChildren--;
+			childMolokai.sleep();
+			childOahu.sleep();
+		}
+
+		if(numOfChildren == 0 && BoatLocation == 0){
+			allOver =true;
 		}
 	}
 }
@@ -135,5 +200,4 @@ public class Boat
 		bg.AdultRideToMolokai();
 		bg.ChildRideToMolokai();
 	}
-
 }*/

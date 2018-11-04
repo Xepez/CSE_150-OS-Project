@@ -1,8 +1,8 @@
 package nachos.threads;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import nachos.ag.BoatGrader;
 import nachos.threads.KThread;
+import nachos.threads.Condition2;
+import nachos.threads.Lock;
 
 public class Boat{
 	static Lock Boat;
@@ -10,11 +10,11 @@ public class Boat{
 	static int numOfAdults;
 	static int BoatLocation;
 	static boolean allOver;
-	static Condition BoatFull;
-	static Condition childMolokai;
-	static Condition childOahu;
-	static Condition adultMolokai;
-	static Condition adultOahu;
+	static Condition2 BoatFull;
+	static Condition2 childMolokai;
+	static Condition2 childOahu;
+	static Condition2 adultMolokai;
+	static Condition2 adultOahu;
 	public static void selfTest(){
 		BoatGrader b = new BoatGrader();
 		System.out.println("\n ***Testing Boats with only 2 children***");
@@ -38,12 +38,12 @@ public class Boat{
 		int ChildMolokai,ChildOahu = children;
 		int AdultMolokai,AdultOahu = adults;
 		int passengers = 0;
-
-		BoatFull = new Condition(Boat);
-		childMolokai = new Condition(Boat);
-		childOahu = new Condition(Boat);
-		adultMolokai = new Condition(Boat);
-		adultOahu = new Condition(Boat);
+		Boat = new Lock();
+		BoatFull = new Condition2(Boat);
+		childMolokai = new Condition2(Boat);
+		childOahu = new Condition2(Boat);
+		adultMolokai = new Condition2(Boat);
+		adultOahu = new Condition2(Boat);
 
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.

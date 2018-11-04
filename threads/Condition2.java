@@ -1,111 +1,95 @@
 package nachos.threads;
-import nachos.ag.BoatGrader;
-import nachos.threads.KThread;
-import nachos.threads.Condition2;
-import nachos.threads.Lock;
 
-public class Boat{
-	static Lock Boat;
-	static int numOfChildren;
-	static int numOfAdults;
-	static int BoatLocation;
-	static boolean allOver;
-	static Condition2 BoatFull;
-	static Condition2 childMolokai;
-	static Condition2 childOahu;
-	static Condition2 adultMolokai;
-	static Condition2 adultOahu;
-	public static void selfTest(){
-		BoatGrader b = new BoatGrader();
-		System.out.println("\n ***Testing Boats with only 2 children***");
-		begin(0, 2, b);
-		//System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-		// begin(1, 2, b);
+import java.util.LinkedList;
 
-		// System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-		// begin(3, 3, b);
+import nachos.machine.*;
+
+/**
+ * An implementation of condition variables that disables interrupt()s for
+ * synchronization.
+ *
+ * <p>
+ * You must implement this.
+ *
+ * @see	nachos.threads.Condition
+ */
+public class Condition2 {
+
+	LinkedList<KThread> heldThreads;
+	/**
+	 * Allocate a new condition variable.
+	 *
+	 * @param	conditionLock	the lock associated with this condition
+	 *				variable. The current thread must hold this
+	 *				lock whenever it uses <tt>sleep()</tt>,
+	 *				<tt>wake()</tt>, or <tt>wakeAll()</tt>.
+	 */
+	public Condition2(Lock conditionLock) {
+		this.conditionLock = conditionLock;
+		this.heldThreads = new LinkedList<KThread>();
 	}
-	public static void begin( int adults, int children, BoatGrader b ){
-		// Store the externally generated autograder in a class
-		// variable to be accessible by children.
-		BoatGrader bg = b;
 
-		// Instantiate global variables here
-		int Oahu = 0;
-		int Molakai = 0;
-		int boatO = 0;
-		int boatM = 1;
-		int ChildMolokai,ChildOahu = children;
-		int AdultMolokai,AdultOahu = adults;
-		int passengers = 0;
-		Boat = new Lock();
-		BoatFull = new Condition2(Boat);
-		childMolokai = new Condition2(Boat);
-		childOahu = new Condition2(Boat);
-		adultMolokai = new Condition2(Boat);
-		adultOahu = new Condition2(Boat);
+	/**
+	 * Atomically release the associated lock and go to sleep on this condition
+	 * variable until another thread wakes it using <tt>wake()</tt>. The
+	 * current thread must hold the associated lock. The thread will
+	 * automatically reacquire the lock before <tt>sleep()</tt> returns.
+	 */
+	public void sleep() {
+		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
-		// Create threads here. See section 3.4 of the Nachos for Java
-		// Walkthrough linked from the projects page.
+		//Stores interrupt state
+		boolean interruptState = Machine.interrupt().disable();
 
+		//Adds the thread to list of sleeping threads
+		heldThreads.add(KThread.currentThread());
 
-		/*Runnable r = new Runnable() {
-	    public void run() {
-                SampleItinerary();
-            }
-        };
-        KThread t = new KThread(r);
-        t.setName("Sample Boat Thread");
-        t.fork();*/
+		conditionLock.release();
+		KThread.sleep();
+		conditionLock.acquire();
 
-		for(int i =0; i < children; i++){
-			KThread t = new KThread(new Runnable(){
-				public void run(){
-					ChildItinerary();
-				}});
-			t.setName("Child Crossed" + i); 
-			t.fork();
+		//Restore interrupt state
+		Machine.interrupt().restore(interruptState);
+	}
+
+	/**
+	 * Wake up at most one thread sleeping on this condition variable. The
+	 * current thread must hold the associated lock.
+	 */
+	public void wake() {
+		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+
+		//Stores interrupt state
+		boolean interruptState = Machine.interrupt().disable();
+
+		if (!heldThreads.isEmpty()) {
+			KThread thread = heldThreads.removeFirst();
+			thread.ready();
 		}
 
-		for(int i =0; i < adults; i++){
-			KThread t = new KThread(new Runnable(){
-				public void run(){
-					AdultItinerary();
-				}});
-			t.setName("Adult Crossed" + i); 
-			t.fork();
+		//Restore interrupt state
+		Machine.interrupt().restore(interruptState);
+	}
+
+	/**
+	 * Wake up all threads sleeping on this condition variable. The current
+	 * thread must hold the associated lock.
+	 */
+	public void wakeAll() {
+		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+
+		//Stores interrupt state
+		boolean interruptState = Machine.interrupt().disable();
+
+		KThread thread = heldThreads.removeFirst();
+		while (thread != null){
+			thread.ready();
+			thread = heldThreads.removeFirst();
 		}
-		if(children==0 && adults == 0){
-			allOver = true;
-		}
 
+		//Restore interrupt state
+		Machine.interrupt().restore(interruptState);
 	}
-	static void AdultItinerary(){
 
-		/* This is where you should put your solutions. Make calls
-	   to the BoatGrader to show that it is synchronized. For
-	   example:
-	       bg.AdultRowToMolokai();
-	   indicates that an adult has rowed the boat across to Molokai
-		 */
-
-	}
-	static void ChildItinerary(){
-		//to implement
-		
-	}
+	private Lock conditionLock;
 }
-
-/*static void SampleItinerary()
-	{
-		// Please note that this isn't a valid solution (you can't fit
-		// all of them on the boat). Please also note that you may not
-		// have a single thread calculate a solution and then just play
-		// it back at the autograder -- you will be caught.
-		System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
-		bg.AdultRowToMolokai();
-		bg.ChildRideToMolokai();
-		bg.AdultRideToMolokai();
-		bg.ChildRideToMolokai();
-	}
-}*/

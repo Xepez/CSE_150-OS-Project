@@ -6,15 +6,22 @@ import nachos.threads.Lock;
 
 public class Boat{
 	static Lock Boat;
-	static int numOfChildren;
-	static int numOfAdults;
-	static int BoatLocation;
-	static boolean allOver;
-	static Condition2 BoatFull;
-	static Condition2 childMolokai;
-	static Condition2 childOahu;
-	static Condition2 adultMolokai;
-	static Condition2 adultOahu;
+	static int numChildren;
+	static int numAdult;
+	static int boatLocation;//0 = Oahu, 1 = Molokai
+	static int inBoat;
+	static Lock boatLock; //Using boat
+    static Lock inBoatLock; //Using boat
+	static Condition2 pInBoat ; //People in boat
+    static Condition2 mChild ; //Groups children at Molokai
+    static Condition2 mAdult ; //Groups adults at Molokai
+    static Condition2 oChild ; //Groups children at Oahu
+    static Condition2 oAdult ; //Groups adults at Oahu
+	static BoatGrader bg;
+	static boolean done; //True when everything is finished
+	///
+        	 
+    static boolean locker;
 	public static void selfTest(){
 		BoatGrader b = new BoatGrader();
 		System.out.println("\n ***Testing Boats with only 2 children***");
@@ -39,11 +46,11 @@ public class Boat{
 		int AdultMolokai,AdultOahu = adults;
 		int passengers = 0;
 		Boat = new Lock();
-		BoatFull = new Condition2(Boat);
-		childMolokai = new Condition2(Boat);
-		childOahu = new Condition2(Boat);
-		adultMolokai = new Condition2(Boat);
-		adultOahu = new Condition2(Boat);
+		pInBoat = new Condition2(Boat);
+		mChild = new Condition2(Boat);
+		oChild = new Condition2(Boat);
+		mAdult = new Condition2(Boat);
+		oAdult = new Condition2(Boat);
 
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
@@ -76,74 +83,98 @@ public class Boat{
 			t.fork();
 		}
 		if(children==0 && adults == 0){
-			allOver = true;
+			done = true;
 		}
 
 	}
 	static void AdultItinerary(){
-
 		/* This is where you should put your solutions. Make calls
-	   to the BoatGrader to show that it is synchronized. For
-	   example:
-	       bg.AdultRowToMolokai();
-	   indicates that an adult has rowed the boat across to Molokai
-		 */
+		   to the BoatGrader to show that it is synchronized. For
+		   example:
+		       bg.AdultRowToMolokai();
+		   indicates that an adult has rowed the boat across to Molokai
+		*/
 
+		boatLock.acquire();
+		while( (numChildren > 1) || (boatLocation == 1) ) {		
+			oAdult.sleep();
+		}	
+		bg.AdultRowToMolokai();
+		numAdult--;
+		boatLocation = 1;
+		mChild.wake();			
+		boatLock.release();
 	}
 	static void ChildItinerary(){
-		//to implement
-		
-		//			2 adults/ 2 children, 2 children 1 ride/1 row to Molokai  
-		
-		//			2adults Oahu, 0 children Oahu, 2 children Molakai
-		
-		//			1 stays on Molokai, the other RowstoOahu  
-		
-		//			1 child Molakai, 1 child Oahu, 2 adults Oahu
-		
-		// 			1 adult rows to Molokai     
-		
-		//			1 adult Molakai ,  1 adult Oahu, 1 child Oahu, 1 child Molakai
-		
-		//			1 child on Molokai rows back to Oahu  
-		
-		//			1 adult Molakai, 1 adult Oahu, 2 children Oahu
-		
-		//			1 child rows to Molokai, other child rides to Molokai
-		
-		//			1 adult Molakai, 1 adult Oahu, 2 children Molokai
-		
-		//			1 child rows back to Oahu
-		
-		//			1 adult 1 child Molakai, 1 adult 1 child Oahu
-		
-		//			1 adult rows/rides to Molakai
-		
-		//			2 adults 1 child Molakai, 1 child Oahu
-		
-		//			1 child on Molokai rows back to Oahu
-		
-		//			2 adults Molakai, 2 children Oahu
-		
-		//			1 child rows to Molokai, other child rides back to Molakai
-		
-		//			2 adults, 2 children Molakai
-		
-		//			All child/adults should now be on Molakai.
-		
+		int currentLocation = 0;	
+		boolean waitingFor = false;
+		while(!done){
+			boatLock.acquire();
+			waitingFor = false;	
+			while(currentLocation != boatLocation || inBoat == 2) { //wait for the boat
+				if(currentLocation == 0) {			
+					mChild.wake();				
+					oChild.sleep();
+				} else {
+					oChild.wake();
+					mChild.sleep();
+				}
+			}
+			if(currentLocation == 0) {
+				if( numChildren > 1) { 
+					while(inBoat != 2 && locker) {
+						if(waitingFor) {//Wait for two	
+							oChild.sleep();
+						} else {
+							waitingFor = true;
+							inBoat++;
+						}
+					}
+
+					
+					if(inBoat == 2) {
+						bg.ChildRowToMolokai();
+						inBoat--;
+						locker = false;
+						boatLocation = 1;
+						oChild.wake();
+					} else {
+						bg.ChildRideToMolokai();
+						numChildren--;
+						numChildren--;
+						inBoat--;
+						boatLocation = 1;
+						locker = true;
+						mChild.wake();
+					}
+					currentLocation = 1;
+					boatLock.release();
+					KThread.yield(); //Finish
+				} else if (numAdult == 0 && numChildren == 1) {
+					bg.ChildRowToMolokai();
+					numChildren--;
+					boatLocation = 1;
+					done = true;
+					currentLocation = 1;
+					boatLock.release();
+					KThread.yield(); //Finish
+				} else { 
+					mChild.wake();			
+					boatLock.release();
+					KThread.yield(); //Finish
+
+				}			
+			} else {
+				numChildren++;
+				boatLocation = 0;
+				currentLocation = 0;
+				bg.ChildRowToOahu();
+				oChild.wake();
+				oAdult.wake();
+				boatLock.release();			
+				KThread.yield(); //Finish
+			}
+		}
+		System.out.println("Todo termino");
 	}
 }
-
-/*static void SampleItinerary()
-	{
-		// Please note that this isn't a valid solution (you can't fit
-		// all of them on the boat). Please also note that you may not
-		// have a single thread calculate a solution and then just play
-		// it back at the autograder -- you will be caught.
-		System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
-		bg.AdultRowToMolokai();
-		bg.ChildRideToMolokai();
-		bg.AdultRideToMolokai();
-		bg.ChildRideToMolokai();
-	}
-}*/

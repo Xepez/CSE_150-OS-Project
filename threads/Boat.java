@@ -93,6 +93,44 @@ public class Boat{
 	static void ChildItinerary(){
 		//to implement
 		
+		//			2 adults/ 2 children, 2 children 1 ride/1 row to Molokai  
+		
+		//			2adults Oahu, 0 children Oahu, 2 children Molakai
+		
+		//			1 stays on Molokai, the other RowstoOahu  
+		
+		//			1 child Molakai, 1 child Oahu, 2 adults Oahu
+		
+		// 			1 adult rows to Molokai     
+		
+		//			1 adult Molakai ,  1 adult Oahu, 1 child Oahu, 1 child Molakai
+		
+		//			1 child on Molokai rows back to Oahu  
+		
+		//			1 adult Molakai, 1 adult Oahu, 2 children Oahu
+		
+		//			1 child rows to Molokai, other child rides to Molokai
+		
+		//			1 adult Molakai, 1 adult Oahu, 2 children Molokai
+		
+		//			1 child rows back to Oahu
+		
+		//			1 adult 1 child Molakai, 1 adult 1 child Oahu
+		
+		//			1 adult rows/rides to Molakai
+		
+		//			2 adults 1 child Molakai, 1 child Oahu
+		
+		//			1 child on Molokai rows back to Oahu
+		
+		//			2 adults Molakai, 2 children Oahu
+		
+		//			1 child rows to Molokai, other child rides back to Molakai
+		
+		//			2 adults, 2 children Molakai
+		
+		//			All child/adults should now be on Molakai.
+		
 	}
 }
 

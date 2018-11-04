@@ -82,7 +82,7 @@ public class Boat{
 			t.setName("Adult Crossed" + i); 
 			t.fork();
 		}
-		if(children==0 && adults == 0){
+		if(children<2 && adults == 0){
 			done = true;
 		}
 
@@ -178,3 +178,17 @@ public class Boat{
 		System.out.println("Todo termino");
 	}
 }
+
+/*static void SampleItinerary()
+	{
+		// Please note that this isn't a valid solution (you can't fit
+		// all of them on the boat). Please also note that you may not
+		// have a single thread calculate a solution and then just play
+		// it back at the autograder -- you will be caught.
+		System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
+		bg.AdultRowToMolokai();
+		bg.ChildRideToMolokai();
+		bg.AdultRideToMolokai();
+		bg.ChildRideToMolokai();
+	}
+}*/

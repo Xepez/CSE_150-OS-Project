@@ -52,10 +52,9 @@ public class Communicator {
 			readyToSpeak.sleep();
 		}
 		numSpeakers--;
-		//isSomeoneSpeaking = true;
 		message = new Integer(word);
 
-		readyToListen.wake();
+		readyToListen.wakeAll();
 
 		
 		mutex.release();
@@ -70,16 +69,16 @@ public class Communicator {
 	public int listen() {
 		mutex.acquire();
 		numListeners++;
-		readyToSpeak.wakeAll();
+		
 		
 		while (message == null){
+			readyToSpeak.wakeAll();
 			readyToListen.sleep();
 		}
+		
 		numListeners--;
 		int word = message.intValue();
 		message = null;
-		//isSomeoneSpeaking = false;
-		readyToSpeak.wakeAll();
 		
 		
 		mutex.release();
@@ -120,6 +119,8 @@ public class Communicator {
         speakTwo.fork();
         speakTwo.join();
         listenTwo.join();
+        
+
 
         // ** Test Three **
         System.out.println("\n[Third test: Four threads, three speakers one listener, order of speaker*3->listener]");

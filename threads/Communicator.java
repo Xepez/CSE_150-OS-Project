@@ -1,5 +1,8 @@
 package nachos.threads;
 
+import java.util.Collections;
+import java.util.LinkedList;
+
 import nachos.machine.*;
 
 /**
@@ -33,6 +36,42 @@ public class Communicator {
 		numListeners = 0;
 		numSpeakers = 0;
 	}
+	
+	public void speak(int word) {
+		if(!mutex.isHeldByCurrentThread()){ mutex.acquire(); }
+		++numSpeakers;
+            while((numListeners == 0) || isSomeoneSpeaking){
+
+                readyToSpeak.sleep();
+
+             }
+
+		
+		
+		message = new Integer(word);
+                isSomeoneSpeaking = true;   // Going to be placing a Messgae
+                readyToListen.wake();  //Wake any(the) sleeping listners
+		--numSpeakers;
+                mutex.release();
+	}
+	
+    public int listen()
+	{
+		if(!mutex.isHeldByCurrentThread()){ mutex.acquire(); }
+		readyToSpeak.wakeAll();
+		++numListeners;
+
+		while(!isSomeoneSpeaking){ readyToListen.sleep(); }      // No message has been spoken, listners wait.
+			
+
+		int word = message.intValue();        //Recieve the message and update the inbox
+		isSomeoneSpeaking = false;
+		--numListeners;
+
+		readyToSpeak.wakeAll();    //Remind any other speakers to check if there are additional listeners
+		mutex.release();
+		return word;
+	}
 
 	/**
 	 * Wait for a thread to listen through this communicator, and then transfer
@@ -44,11 +83,13 @@ public class Communicator {
 	 *
 	 * @param	word	the integer to transfer.
 	 */
+	/*
 	public void speak(int word) {
 		mutex.acquire();
 		numSpeakers++;
 
 		while (message != null || numListeners == 0) { //Ensures there's at least one listener and not another speaker speaking
+			readyToListen.wake();
 			readyToSpeak.sleep();
 		}
 		numSpeakers--;
@@ -66,13 +107,14 @@ public class Communicator {
 	 *
 	 * @return	the integer transferred.
 	 */    
+	/*
 	public int listen() {
 		mutex.acquire();
 		numListeners++;
 		
 		
 		while (message == null){
-			readyToSpeak.wakeAll();
+			readyToSpeak.wake();
 			readyToListen.sleep();
 		}
 		
@@ -84,7 +126,7 @@ public class Communicator {
 		mutex.release();
 		return word;
 	}
-	
+	*/
 	
 	//Tester method
 	public static void selfTest()
@@ -202,7 +244,41 @@ public class Communicator {
         listenEight.fork();
         System.out.println("Listener should hear 7");
         speakTen.fork();
-        speakTen.join();     
+        speakTen.join();    
+        
+
+        // ** Test 6 **
+        System.out.println("\n[Sixth test: Eight threads, 4 speakers and four listeners but forked in a random order, ran for 5 iterations]");
+
+        //for (int i = 0; i < 5; i++){
+        	//System.out.println("\nIteration " + i);
+        	test = new Communicator();
+        	KThread S61 = new KThread(new Speaker(test, 55));
+        	KThread S62 = new KThread(new Speaker(test, 158));
+        	KThread S63 = new KThread(new Speaker(test, 172));
+        	KThread S64 = new KThread(new Speaker(test, 211));
+        	KThread L61 = new KThread(new Listener(test));
+        	KThread L62 = new KThread(new Listener(test));
+        	KThread L63 = new KThread(new Listener(test));
+        	KThread L64 = new KThread(new Listener(test));
+
+        	LinkedList<KThread> list = new LinkedList<KThread>();
+        	list.add(S61);
+        	list.add(S62);   
+        	list.add(S63);
+        	list.add(S64);
+        	list.add(L61);
+        	list.add(L62);
+        	list.add(L63);
+        	list.add(L64);
+		Collections.shuffle(list);
+		while (list.peek() != null){
+			list.removeFirst().fork();
+		}     	
+
+        //}
+        System.out.println("\nFinished Communicator testing");
+
         }
  
 	//Below classes are internal classes so as not to have to mess with any external files

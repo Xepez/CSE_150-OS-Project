@@ -2,23 +2,23 @@ package nachos.threads;
 import java.util.LinkedList;
 public class Communicator {
 	private static Lock lock;
-	private LinkedList<ThreadInfo> Speaker;
-	private LinkedList<ThreadInfo> Listener;
+	private LinkedList<thrInfo> Speaker;
+	private LinkedList<thrInfo> Listener;
 	public Communicator() {
 		lock = new Lock();
-		Speaker = new LinkedList<ThreadInfo>();
-		Listener = new LinkedList<ThreadInfo>();
+		Speaker = new LinkedList<thrInfo>();
+		Listener = new LinkedList<thrInfo>();
 	}
 	public int listen() {
 		lock.acquire();
 		int word = 0;
 		if (!Speaker.isEmpty()) {
-			ThreadInfo speaker = Speaker.removeFirst();
+			thrInfo speaker = Speaker.removeFirst();
 			word = speaker.getWord();
 			speaker.getCondition().wake();
 		}
 		else {
-			ThreadInfo listener = new ThreadInfo();
+			thrInfo listener = new thrInfo();
 			Listener.add(listener);
 			listener.getCondition().sleep();
 			word = listener.getWord();
@@ -29,31 +29,34 @@ public class Communicator {
 	public void speak(int int1) {
 		lock.acquire();
 		if (!Listener.isEmpty()) {
-			ThreadInfo listen = Listener.removeFirst();
+			thrInfo listen = Listener.removeFirst();
 			listen.setWord(int1);
 			listen.getCondition().wake();
 		}
 		else {
-			ThreadInfo spk = new ThreadInfo();
+			thrInfo spk = new thrInfo();
 			spk.setWord(int1);
 			Speaker.add(spk);
 			spk.getCondition().sleep();
 		}
 		lock.release();
 	}
-	private class ThreadInfo {
+	private class thrInfo {
 		int int1;
 		Condition condition;
-		public ThreadInfo() {
+
+		public thrInfo() {
 			int1 = 0;
 			condition = new Condition(lock);
 		}
 		public Condition getCondition() {
 			return condition;
 		}
+
 		public int getWord() {
 			return int1;
 		}
+
 		public void setWord(int int2) {
 			this.int1 = int2;
 		}

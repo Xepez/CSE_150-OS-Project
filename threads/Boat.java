@@ -46,9 +46,9 @@ public class Boat {
 					AdultItinerary();
 				}
 			};
-			KThread t = new KThread(r);
-			t.setName("Adult " + i + " Thread");
-			t.fork();
+			KThread thr = new KThread(r);
+			thr.setName("Adult " + i + " Thread");
+			thr.fork();
 		}
 
 		for (int i = 0; i < oChild; i++) {
@@ -57,9 +57,9 @@ public class Boat {
 					ChildItinerary();
 				}
 			};
-			KThread t = new KThread(r);
-			t.setName("Child " + i + " Thread");
-			t.fork();
+			KThread thr = new KThread(r);
+			thr.setName("Child " + i + " Thread");
+			thr.fork();
 		}
 
 		done.P();
@@ -88,7 +88,7 @@ public class Boat {
 				adultsOahu.sleep();
 		}
 	}
-
+	
 	static void ChildItinerary() {
 		boolean onOahu = true;
 		genLock.acquire();
@@ -117,14 +117,12 @@ public class Boat {
 					oChild--;
 					onOahu = false;
 					bg.ChildRideToMolokai();
-					boatOnOahu = false;
 					inBoat = 0;
+					boatOnOahu = false;
 					if (oAdult == 0 && oChild == 0) {
 						done.V();
 						childrenMolokai.sleep();
 					}
-					//childrenMolokai.wakeAll();
-					//childrenMolokai.sleep();
 				}
 				else
 					childrenOahu.sleep();
@@ -145,10 +143,7 @@ public class Boat {
 	}
 
 	static void SampleItinerary() {
-		// Please note that this isn't a valid solution (you can't fit
-		// all of them on the boat). Please also note that you may not
-		// have a single thread calculate a solution and then just play
-		// it back at the autograder -- you will be caught.
+		// Not a valid solution
 		System.out.println("\n ***Everyone piles on the boat and goes to Molokai***");
 		bg.AdultRowToMolokai();
 		bg.ChildRideToMolokai();

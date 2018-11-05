@@ -121,13 +121,14 @@ public class Boat{
 				}
 			}
 			if(currentLocation == 0) {
-				if( numChildren > 1) { 
+				if(numChildren > 1) { 
 					while(inBoat != 2 && locker) {
 						if(waitingFor) {//Wait for two	
 							oChild.sleep();
 						} else {
 							waitingFor = true;
 							inBoat++;
+							numChildren--;
 						}
 					}
 

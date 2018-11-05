@@ -1,72 +1,67 @@
 package nachos.threads;
 import java.util.LinkedList;
 public class Communicator {
-	
-	private static Lock mutex;
+	private static Lock lock;
 	private LinkedList<thrInfo> Speaker;
 	private LinkedList<thrInfo> Listener;
-	
 	public Communicator() {
-		mutex = new Lock();
+		lock = new Lock();
 		Speaker = new LinkedList<thrInfo>();
 		Listener = new LinkedList<thrInfo>();
 	}
-	
 	public int listen() {
-		mutex.acquire();
+		lock.acquire();
 		int word = 0;
-		
-		if (Speaker.poll() != null) {
+		if (!Speaker.isEmpty()) {
 			thrInfo speaker = Speaker.removeFirst();
-			word = speaker.msg;
-			speaker.condition.wake();
+			word = speaker.getWord();
+			speaker.getCondition().wake();
 		}
 		else {
 			thrInfo listener = new thrInfo();
 			Listener.add(listener);
-			listener.condition.sleep();
-			word = listener.msg;
+			listener.getCondition().sleep();
+			word = listener.getWord();
 		}
-		mutex.release();
+		lock.release();
 		return word;
 	}
-	
-	public void speak(int word) {
-		mutex.acquire();
-		
-		if (Listener.poll() != null) {
+	public void speak(int int1) {
+		lock.acquire();
+		if (!Listener.isEmpty()) {
 			thrInfo listen = Listener.removeFirst();
-			listen.setMsg(word);
-			listen.condition.wake();
+			listen.setWord(int1);
+			listen.getCondition().wake();
 		}
 		else {
-			thrInfo spk = new thrInfo(word);
-			spk.setMsg(word);
+			thrInfo spk = new thrInfo();
+			spk.setWord(int1);
 			Speaker.add(spk);
-			spk.condition.sleep();
+			spk.getCondition().sleep();
 		}
-		
-		mutex.release();
+		lock.release();
 	}
 	private class thrInfo {
-		public int msg;
-		public Condition2 condition;
+		int int1;
+		Condition condition;
 
-		public thrInfo(int word) {
-			msg = word;
-			condition = new Condition2(mutex);
+		public thrInfo() {
+			int1 = 0;
+			condition = new Condition(lock);
 		}
-		public thrInfo(){
-			msg = 0;
-			condition = new Condition2(mutex);
-		}
-		
-		public void setMsg(int word) {
-			msg = word;
+		public Condition getCondition() {
+			return condition;
 		}
 
+		public int getWord() {
+			return int1;
+		}
+
+		public void setWord(int int2) {
+			this.int1 = int2;
+		}
 	}
-	
+}	
 	/*
 	//Tester method
 	public static void selfTest()

@@ -13,7 +13,7 @@ public class Alarm {
     }
 
     public void timerInterrupt() {
-      // boolean status = Machine.interrupt().disable();
+
       long currentTime = 0;
       boolean status = Machine.interrupt().disable();
 
@@ -34,12 +34,14 @@ public class Alarm {
     }
 
     public void waitUntil(long waitTime) {
-	     // for now, cheat just to get something working (busy waiting is bad)
+
        long currTime = Machine.timer().getTime();
        long wakeTime = currTime + waitTime;	//current time + wait time = wake time
        boolean status = Machine.interrupt().disable();
 
-       waitQueue.add(new ThreadsWaiting(wakeTime, KThread.currentThread()));
+       ThreadsWaiting waitingThread = new ThreadsWaiting(wakeTime, KThread.currentThread());
+
+       waitQueue.add(waitingThread);
        KThread.sleep();
        Machine.interrupt().restore(status);
 
@@ -50,8 +52,7 @@ public class Alarm {
      }
 
      private PriorityQueue<ThreadsWaiting> waitQueue = new PriorityQueue<ThreadsWaiting>();	//This classes' wait queue
-     //Queue updated in Waiter class
-     // TASK 1.3
+
      private class ThreadsWaiting implements Comparable<ThreadsWaiting> {
        private long wakeTime;
        private KThread newThread;
@@ -61,9 +62,14 @@ public class Alarm {
          this.newThread = newThread;
        }
 
-      @Override
-      public int compareTo(ThreadsWaiting that) {
-        return Long.signum(wakeTime - that.wakeTime);	//Long.signum() returns -1 if negative...
-      }													//0 if value is equal and 1 if value is positive
+      public int compareTo(ThreadsWaiting thread) {
+        long currTime = this.wakeTime;
+        long newTime = thread.wakeTime;
+
+        int num = Long.signum(currTime - newTime);
+
+        return num;
+
+      }
     }
 }

@@ -106,77 +106,55 @@ public class Boat{
 		boatLock.release();
 	}
 	static void ChildItinerary(){
-		int currentLocation = 0;	
-		boolean waitingFor = false;
-		while(!done){
-			boatLock.acquire();
-			waitingFor = false;	
-			while(currentLocation != boatLocation || inBoat == 2) { //wait for the boat
-				if(currentLocation == 0) {			
-					mChild.wake();				
-					oChild.sleep();
-				} else {
-					oChild.wake();
+		boatLocation = 0;
+		boatLock.acquire(); //boatLock.acquire();
+		while (true) {//while(!done){ 
+			if (!done) {
+				if (boatLocation == 0 && inBoat == 0) {
+					boatLocation = 1;
+					numChildren--;
+					bg.ChildRowToMolokai();
+					if (numChildren > 0) {
+						inBoat = 1;
+						oChild.wake();
+					}
+					else {
+						inBoat = 0;
+						if (numAdult == 0 && numChildren == 0) {
+							done = true;
+							mChild.sleep();
+						}
+						mChild.wakeAll();
+					}
 					mChild.sleep();
 				}
-			}
-			if(currentLocation == 0) {
-				if(numChildren > 1) { 
-					while(inBoat != 2 && locker) {
-						if(waitingFor) {//Wait for two	
-							oChild.sleep();
-						} else {
-							waitingFor = true;
-							inBoat++;
-							numChildren--;
-						}
-					}
-
-					
-					if(inBoat == 2) {
-						bg.ChildRowToMolokai();
-						inBoat--;
-						locker = false;
-						boatLocation = 1;
-						oChild.wake();
-					} else {
-						bg.ChildRideToMolokai();
-						numChildren--;
-						numChildren--;
-						inBoat--;
-						boatLocation = 1;
-						locker = true;
-						mChild.wake();
-					}
-					currentLocation = 1;
-					boatLock.release();
-					KThread.yield(); //Finish
-				} else if (numAdult == 0 && numChildren == 1) {
-					bg.ChildRowToMolokai();
+				else if (boatLocation == 0 && inBoat == 1) {
 					numChildren--;
+					bg.ChildRideToMolokai();
 					boatLocation = 1;
-					done = true;
-					currentLocation = 1;
-					boatLock.release();
-					KThread.yield(); //Finish
-				} else { 
-					mChild.wake();			
-					boatLock.release();
-					KThread.yield(); //Finish
-
-				}			
-			} else {
-				numChildren++;
-				boatLocation = 0;
-				currentLocation = 0;
-				bg.ChildRowToOahu();
-				oChild.wake();
-				oAdult.wake();
-				boatLock.release();			
-				KThread.yield(); //Finish
+					inBoat = 0;
+					if (numAdult == 0 && numChildren == 0) {
+						done = true;
+						mChild.sleep();
+					}
+					mChild.wakeAll();
+					mChild.sleep();
+				}
+				else
+					oChild.sleep();
+			}
+			else {
+				if (boatLocation == 1) {
+					bg.ChildRowToOahu();
+					numChildren++;
+					boatLocation = 0;
+					oAdult.wakeAll();
+					oChild.sleep();
+				}
+				else
+					mChild.sleep();
 			}
 		}
-		System.out.println("Todo termino");
 	}
 }
 

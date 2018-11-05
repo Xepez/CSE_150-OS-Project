@@ -47,15 +47,13 @@ public class Communicator {
 	public void speak(int word) {
 		mutex.acquire();
 		numSpeakers++;
-		System.out.println("Number of listeners is " + numListeners);
-		while (isSomeoneSpeaking || numListeners == 0) { //Ensures there's at least one listener and not another speaker speaking
-			System.out.println("Sleeping");
+
+		while (message != null || numListeners == 0) { //Ensures there's at least one listener and not another speaker speaking
 			readyToSpeak.sleep();
 		}
 		numSpeakers--;
-		isSomeoneSpeaking = true;
+		//isSomeoneSpeaking = true;
 		message = new Integer(word);
-		//System.out.println("Message is " + message);
 
 		readyToListen.wake();
 
@@ -73,14 +71,14 @@ public class Communicator {
 		mutex.acquire();
 		numListeners++;
 		readyToSpeak.wakeAll();
-		System.out.println("Number of speakers is " + numSpeakers);
-		while (!isSomeoneSpeaking){
+		
+		while (message == null){
 			readyToListen.sleep();
 		}
 		numListeners--;
 		int word = message.intValue();
 		message = null;
-		isSomeoneSpeaking = false;
+		//isSomeoneSpeaking = false;
 		readyToSpeak.wakeAll();
 		
 		
@@ -109,7 +107,7 @@ public class Communicator {
         //speakOne.join();
         listenOne.join(); //Execute thread
         
-        System.out.println("Number of speakers & listeners is " + test.numSpeakers + " " + test.numListeners);
+        
         // ** Test Two **
         System.out.println("\n[Second test: Two threads, one speaker one listener, order of listener ->speaker]");
         KThread listenTwo = new KThread(new Listener(test));
@@ -121,9 +119,8 @@ public class Communicator {
         speakTwo.setName("S2");
         speakTwo.fork();
         speakTwo.join();
-        //listenTwo.join();
+        listenTwo.join();
 
-        System.out.println("Number of speakers & listeners is " + test.numSpeakers + " " + test.numListeners);
         // ** Test Three **
         System.out.println("\n[Third test: Four threads, three speakers one listener, order of speaker*3->listener]");
         test = new Communicator();
@@ -150,7 +147,6 @@ public class Communicator {
         listenThree.fork();
         listenThree.join();
         
-        System.out.println("Number of speakers & listeners is " + test.numSpeakers + " " + test.numListeners);
         // ** Test Four **
         System.out.println("\n[Fourth test: Six threads, three speakers three listeners, order of listener*3->speaker*3]");
         test = new Communicator();
@@ -185,12 +181,11 @@ public class Communicator {
         speakEight.fork();
         speakEight.join();
 
-        System.out.println("Number of speakers & listeners is " + test.numSpeakers + " " + test.numListeners);
         // ** Test 5 **
-        System.out.println("\n[Fifth test: Four threads, 2 speakers 2 listeners, order of speaker->listener->listener->speaker]");
+        System.out.println("\n[Fifth test: Four threads, 1 speaker 3 listeners, order of listener*3->speaker]");
         test = new Communicator();
-        KThread speakNine = new KThread(new Speaker(test, 500));
-        speakNine.setName("S9");
+        KThread SL9 = new KThread(new Listener(test));
+        SL9.setName("SL9");
 
         KThread listenSev = new KThread(new Listener(test));
         listenSev.setName("L7");
@@ -201,15 +196,12 @@ public class Communicator {
         KThread speakTen = new KThread(new Speaker(test, 7));
         speakTen.setName("S10");
 
-        speakNine.fork();
-        System.out.println("Listener should hear 500");
+        SL9.fork();
         listenSev.fork();
-        listenSev.join();
         listenEight.fork();
         System.out.println("Listener should hear 7");
         speakTen.fork();
         speakTen.join();     
-        System.out.println("Number of speakers & listeners is " + test.numSpeakers + " " + test.numListeners);
         }
  
 	//Below classes are internal classes so as not to have to mess with any external files

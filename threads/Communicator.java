@@ -18,6 +18,7 @@ public class Communicator {
 	int numListeners;
 	int numSpeakers;
 	Integer message;
+	boolean isSomeoneSpeaking;
 
 	/**
 	 * Allocate a new communicator.
@@ -27,6 +28,9 @@ public class Communicator {
 		mutex = new Lock();
 		readyToListen = new Condition2(mutex);
 		readyToSpeak = new Condition2(mutex);
+		isSomeoneSpeaking = false;
+		numListeners = 0;
+		numSpeakers = 0;
 	}
 
 	/**
@@ -43,12 +47,14 @@ public class Communicator {
 		mutex.acquire();
 		numSpeakers++;
 
-		while (numListeners == 0 && message != null) { //Ensures there's at least one listener and not another speaker speaking
+		while (message != null) { //Ensures there's at least one listener and not another speaker speaking
 			readyToSpeak.sleep();
 		}
+		
 		message = new Integer(word);
+		//System.out.println("Message is " + message);
 
-		readyToListen.wake();
+		readyToListen.wakeAll();
 
 		numListeners--;
 		mutex.release();
@@ -63,18 +69,175 @@ public class Communicator {
 	public int listen() {
 		mutex.acquire();
 		numListeners++;
-		while (message == null){
+		
+		while (numSpeakers == 0 && message == null){
 			readyToListen.sleep();
 		}
 
 		int word = message.intValue();
 		message = null;
 		readyToSpeak.wake();
-
+		
 		numSpeakers--;
 		mutex.release();
 		return word;
 	}
+	
+	
+	//Tester method
+	public static void selfTest()
+	{
+        System.out.println("\n**Communicator test**");
+        Communicator test = new Communicator();
+        
+        // ** Test One **
+        System.out.println("[First test: Two threads, one speaker one listener, order of speaker->listener]");
+        
+        KThread speakOne = new KThread(new Speaker(test, 5));
+        speakOne.setName("S1");
+        speakOne.fork();
+        
+        System.out.println("Listener should say 5");
+        KThread listenOne = new KThread(new Listener(test));
+        listenOne.setName("L1"); 
+        listenOne.fork();
+        //speakOne.join();
+        listenOne.join(); //Execute thread
+        
+        // ** Test Two **
+        System.out.println("\n[Second test: Two threads, one speaker one listener, order of listener ->speaker]");
+        KThread listenTwo = new KThread(new Listener(test));
+        listenTwo.setName("L2");
+        listenTwo.fork();
+        
+        System.out.println("Listener should say 37");
+        KThread speakTwo = new KThread(new Speaker(test, 37));
+        speakTwo.setName("S2");
+        speakTwo.fork();
+        speakTwo.join();
+        //listenTwo.join();
+
+        // ** Test Three **
+        System.out.println("\n[Third test: Four threads, three speakers one listener, order of speaker*3->listener]");
+        test = new Communicator();
+        KThread speakThree = new KThread(new Speaker(test, 50));
+        speakThree.setName("S3");
+        
+        KThread speakFour = new KThread(new Speaker(test, 19));
+        speakFour.setName("S4");
+        
+        KThread speakFive = new KThread(new Speaker(test, 108));
+        speakFive.setName("S5");
+        
+        speakThree.fork();
+        speakFour.fork();
+        speakFive.fork();
+        
+        System.out.println("Listener should say 50");
+        KThread listenThree = new KThread(new Listener(test));
+        listenThree.setName("L3");
+        listenThree.fork();
+        listenThree.join();
+        
+        // ** Test Four **
+        System.out.println("\n[Fourth test: Six threads, three speakers three listeners, order of listener*3->speaker*3]");
+        test = new Communicator();
+        KThread listenFour = new KThread(new Listener(test));
+        listenFour.setName("L4");
+        
+        KThread listenFive = new KThread(new Listener(test));
+        listenFive.setName("L5");
+        
+        KThread listenSix = new KThread(new Listener(test));
+        listenSix.setName("L6");
+
+        KThread speakSix = new KThread(new Speaker(test, 82));
+        speakSix.setName("S6");
+        
+        KThread speakSev = new KThread(new Speaker(test, 99));
+        speakSev.setName("S7");
+        
+        KThread speakEight = new KThread(new Speaker(test, 111));
+        speakEight.setName("S8");
+        
+        listenFour.fork();
+        listenFive.fork();
+        listenSix.fork();
+        System.out.println("Listener should say 82");
+        speakSix.fork();
+        speakSix.join();
+        System.out.println("Listener should say 99");
+        speakSev.fork();
+        speakSev.join();
+        System.out.println("Listener should say 111");
+        speakEight.fork();
+        speakEight.join();
+
+        // ** Test 5 **
+        System.out.println("\n[Fifth test: Four threads, 2 speakers 2 listeners, order of speaker->listener->listener->speaker]");
+        test = new Communicator();
+        KThread speakNine = new KThread(new Speaker(test, 500));
+        speakNine.setName("S9");
+
+        KThread listenSev = new KThread(new Listener(test));
+        listenSev.setName("L7");
+
+        KThread listenEight = new KThread(new Listener(test));
+        listenEight.setName("L8");
+
+        KThread speakTen = new KThread(new Speaker(test, 7));
+        speakTen.setName("S10");
+
+        speakNine.fork();
+        System.out.println("Listener should say 500");
+        listenSev.fork();
+        listenSev.join();
+        listenEight.fork();
+        System.out.println("Listener should say 7");
+        speakTen.fork();
+        speakTen.join();        
+        }
+ 
+	//Below classes are internal classes so as not to have to mess with any external files
+	//Test Speaker, holds a reference to the communicator and the message it's saying
+	private static class Speaker implements Runnable
+	{
+		int msg;
+		Communicator communicator;
+
+		public Speaker(Communicator com, int word)
+		{
+			msg = word;
+			communicator = com;
+		}
+
+		public void run()
+		{
+			communicator.speak(msg);
+            System.out.println("Said: " + msg);
+		}
+	}
+
+	//Test Listener, receives the message and outputs it
+	private static class Listener implements Runnable
+	{
+		int msg;
+		Communicator communicator;
+
+		public Listener(Communicator comm)
+		{
+			msg = 0;
+			communicator = comm;
+		}
+
+		public void run()
+		{
+            msg = communicator.listen();
+			System.out.println("Heard: " + msg);
+		}
+	}
+
+	
 }
 
 

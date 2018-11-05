@@ -1,7 +1,5 @@
 package nachos.threads;
-
 import nachos.machine.*;
-
 import java.util.PriorityQueue;
 
 public class Alarm {
@@ -17,14 +15,14 @@ public class Alarm {
       long currentTime = 0;
       boolean status = Machine.interrupt().disable();
 
-      while(!waitQueue.isEmpty()) {	//while there is a thread in wait queue
+      while(!readyQueue.isEmpty()) {	//while there is a thread in wait queue
         currentTime = Machine.timer().getTime();
 
-        if(waitQueue.peek().wakeTime <= currentTime) { //check if it is time to wake up thread
-          waitQueue.poll().newThread.ready();//wake
+        if(readyQueue.peek().wakeTime <= currentTime) { //check if it is time to wake up thread
+          readyQueue.poll().newThread.ready();//wake
         }
 
-        else if (waitQueue.peek().wakeTime > currentTime) {
+        else if (readyQueue.peek().wakeTime > currentTime) {
           break;	//end iteration
         }
       }
@@ -41,7 +39,7 @@ public class Alarm {
 
        ThreadsWaiting waitingThread = new ThreadsWaiting(wakeTime, KThread.currentThread());
 
-       waitQueue.add(waitingThread);
+       readyQueue.add(waitingThread);
        KThread.sleep();
        Machine.interrupt().restore(status);
 
@@ -51,7 +49,7 @@ public class Alarm {
        }	//While it isn't it's time to wake up, yield.
      }
 
-     private PriorityQueue<ThreadsWaiting> waitQueue = new PriorityQueue<ThreadsWaiting>();	//This classes' wait queue
+     private PriorityQueue<ThreadsWaiting> readyQueue = new PriorityQueue<ThreadsWaiting>();	//This classes' wait queue
 
      private class ThreadsWaiting implements Comparable<ThreadsWaiting> {
        private long wakeTime;

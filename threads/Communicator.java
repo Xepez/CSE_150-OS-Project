@@ -97,7 +97,7 @@ public class Communicator {
         speakOne.setName("S1");
         speakOne.fork();
         
-        System.out.println("Listener should say 5");
+        System.out.println("Listener should hear 5");
         KThread listenOne = new KThread(new Listener(test));
         listenOne.setName("L1"); 
         listenOne.fork();
@@ -110,7 +110,7 @@ public class Communicator {
         listenTwo.setName("L2");
         listenTwo.fork();
         
-        System.out.println("Listener should say 37");
+        System.out.println("Listener should hear 37");
         KThread speakTwo = new KThread(new Speaker(test, 37));
         speakTwo.setName("S2");
         speakTwo.fork();
@@ -133,7 +133,7 @@ public class Communicator {
         speakFour.fork();
         speakFive.fork();
         
-        System.out.println("Listener should say 50");
+        System.out.println("Listener should hear 50");
         KThread listenThree = new KThread(new Listener(test));
         listenThree.setName("L3");
         listenThree.fork();
@@ -163,13 +163,13 @@ public class Communicator {
         listenFour.fork();
         listenFive.fork();
         listenSix.fork();
-        System.out.println("Listener should say 82");
+        System.out.println("Listener should hear 82");
         speakSix.fork();
         speakSix.join();
-        System.out.println("Listener should say 99");
+        System.out.println("Listener should hear 99");
         speakSev.fork();
         speakSev.join();
-        System.out.println("Listener should say 111");
+        System.out.println("Listener should hear 111");
         speakEight.fork();
         speakEight.join();
 
@@ -189,11 +189,11 @@ public class Communicator {
         speakTen.setName("S10");
 
         speakNine.fork();
-        System.out.println("Listener should say 500");
+        System.out.println("Listener should hear 500");
         listenSev.fork();
         listenSev.join();
         listenEight.fork();
-        System.out.println("Listener should say 7");
+        System.out.println("Listener should hear 7");
         speakTen.fork();
         speakTen.join();        
         }

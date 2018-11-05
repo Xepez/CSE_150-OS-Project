@@ -44,7 +44,6 @@ public class Communicator {
 	private class ThreadInfo {
 		int int1;
 		Condition condition;
-
 		public ThreadInfo() {
 			int1 = 0;
 			condition = new Condition(lock);
@@ -52,11 +51,9 @@ public class Communicator {
 		public Condition getCondition() {
 			return condition;
 		}
-
 		public int getWord() {
 			return int1;
 		}
-
 		public void setWord(int int2) {
 			this.int1 = int2;
 		}

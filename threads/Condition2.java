@@ -96,53 +96,5 @@ public class Condition2 {
 
     private Lock conditionLock;
     
-	private static class PingTest implements Runnable {
-		PingTest(int which, Condition2 cond, Lock lock) {
-			this.which = which;
-			this.cond = cond;
-			this.lock = lock;
-		}
 
-		public void run() {
-			lock.acquire();
-			if (this.which < 3) {
-				numWaiting++;
-				cond.sleep();
-			} else {
-				while (numWaiting > 0) {
-//					cond.wake();
-//					numWaiting--;
-					cond.wakeAll();
-					numWaiting = 0;
-				}
-			}
-			lock.release();
-		}
-		private int which;
-		private Condition2 cond;
-		private Lock lock;
-		private static int numWaiting = 0;
-		private static boolean wakeAll = false;
-	}
-
-	// Test stuff below
-	public static void selfTest() {
-
-		System.out.println("\n Entering Condition2.selfTest()");
-		Lock lock = new Lock();
-		Condition2 conditionVar = new Condition2(lock);
-
-
-		System.out.println("\n***Testing sleep and wake***");
-		for (int i = 0; i < 3; i++) {
-			KThread newThread = new KThread(new PingTest(i+1,conditionVar,lock));
-			newThread.setName("" + i);
-			newThread.fork();
-		}
-		new PingTest(0,conditionVar, lock).run();
-
-
-		System.out.println("\n Finished testing Condition2.java");
-
-	}
 }

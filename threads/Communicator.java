@@ -1,68 +1,74 @@
 package nachos.threads;
 import java.util.LinkedList;
 public class Communicator {
-	private static Lock lock;
-	private LinkedList<thrInfo> Speaker;
-	private LinkedList<thrInfo> Listener;
+	
+	private static Lock mutex;
+	private LinkedList<Message> Speaker;
+	private LinkedList<Message> Listener;
+	
 	public Communicator() {
-		lock = new Lock();
-		Speaker = new LinkedList<thrInfo>();
-		Listener = new LinkedList<thrInfo>();
+		mutex = new Lock();
+		Speaker = new LinkedList<Message>();
+		Listener = new LinkedList<Message>();
 	}
-	public int listen() {
-		lock.acquire();
-		int word = 0;
-		if (!Speaker.isEmpty()) {
-			thrInfo speaker = Speaker.removeFirst();
-			word = speaker.getWord();
-			speaker.getCondition().wake();
+	
+	public void speak(int word) {
+		mutex.acquire();
+		
+		if (Listener.peek() != null) {
+			Message listen = Listener.removeFirst();
+			listen.setMsg(word);
+			listen.condition.wake();
 		}
 		else {
-			thrInfo listener = new thrInfo();
-			Listener.add(listener);
-			listener.getCondition().sleep();
-			word = listener.getWord();
+			Message spk = new Message(word);
+			Speaker.add(spk);
+			spk.condition.sleep();
 		}
-		lock.release();
+		
+		mutex.release();
+	}
+	
+	public int listen() {
+		mutex.acquire();
+		int word = 0;
+		
+		if (Speaker.peek() != null) {
+			Message speaker = Speaker.removeFirst();
+			word = speaker.msg;
+			speaker.condition.wake();
+		}
+		else {
+			Message listener = new Message();
+			Listener.add(listener);
+			listener.condition.sleep();
+			word = listener.msg;
+		}
+		mutex.release();
 		return word;
 	}
-	public void speak(int int1) {
-		lock.acquire();
-		if (!Listener.isEmpty()) {
-			thrInfo listen = Listener.removeFirst();
-			listen.setWord(int1);
-			listen.getCondition().wake();
+	
+
+	private class Message {
+		public int msg;
+		public Condition2 condition;
+
+		public Message(int word) {
+			msg = word;
+			condition = new Condition2(mutex);
 		}
-		else {
-			thrInfo spk = new thrInfo();
-			spk.setWord(int1);
-			Speaker.add(spk);
-			spk.getCondition().sleep();
+		public Message(){
+			msg = 0;
+			condition = new Condition2(mutex);
 		}
-		lock.release();
+		
+		public void setMsg(int word) {
+			msg = word;
+		}
+
 	}
-	private class thrInfo {
-		int int1;
-		Condition condition;
-
-		public thrInfo() {
-			int1 = 0;
-			condition = new Condition(lock);
-		}
-		public Condition getCondition() {
-			return condition;
-		}
-
-		public int getWord() {
-			return int1;
-		}
-
-		public void setWord(int int2) {
-			this.int1 = int2;
-		}
-	}
-}	
-	/*
+	
+/*
 	//Tester method
 	public static void selfTest()
 	{
@@ -127,23 +133,23 @@ public class Communicator {
         
         // ** Test Four **
         System.out.println("\n[Fourth test: Six threads, three speakers three listeners, order of listener*3->speaker*3]");
-        test = new Communicator();
-        KThread listenFour = new KThread(new Listener(test));
+        Communicator atest = new Communicator();
+        KThread listenFour = new KThread(new Listener(atest));
         listenFour.setName("L4");
         
-        KThread listenFive = new KThread(new Listener(test));
+        KThread listenFive = new KThread(new Listener(atest));
         listenFive.setName("L5");
         
-        KThread listenSix = new KThread(new Listener(test));
+        KThread listenSix = new KThread(new Listener(atest));
         listenSix.setName("L6");
 
-        KThread speakSix = new KThread(new Speaker(test, 82));
+        KThread speakSix = new KThread(new Speaker(atest, 82));
         speakSix.setName("S6");
         
-        KThread speakSev = new KThread(new Speaker(test, 99));
+        KThread speakSev = new KThread(new Speaker(atest, 99));
         speakSev.setName("S7");
         
-        KThread speakEight = new KThread(new Speaker(test, 111));
+        KThread speakEight = new KThread(new Speaker(atest, 111));
         speakEight.setName("S8");
         
         listenFour.fork();
@@ -228,4 +234,4 @@ public class Communicator {
 	}
 */
 	
-//}
+}

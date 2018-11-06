@@ -15,7 +15,7 @@ public class Communicator {
 	public void speak(int word) {
 		mutex.acquire();
 		
-		if (!Listener.isEmpty()) {
+		if (Listener.peek() != null) {
 			Message listen = Listener.removeFirst();
 			listen.setMsg(word);
 			listen.getCond().wake();
@@ -33,7 +33,7 @@ public class Communicator {
 		mutex.acquire();
 		int word = 0;
 		
-		if (!Speaker.isEmpty()) {
+		if (Speaker.peek() != null) {
 			Message speaker = Speaker.removeFirst();
 			word = speaker.getMsg();
 			speaker.getCond().wake();

@@ -50,15 +50,15 @@ public class Communicator {
 
 	private class Message {
 		public int msg;
-		public Condition2 condition;
+		public Condition condition;
 
 		public Message(int word) {
 			msg = word;
-			condition = new Condition2(mutex);
+			condition = new Condition(mutex);
 		}
 		public Message(){
 			msg = 0;
-			condition = new Condition2(mutex);
+			condition = new Condition(mutex);
 		}
 		
 		public void setMsg(int word) {

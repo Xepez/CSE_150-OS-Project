@@ -139,13 +139,6 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			getThreadState(thread).acquire(this);
 		}
-		
-		public void removeDonation() {
-			// Removes this from the lock threads donation queue since no longer needed
-			this.headLock.donateQueue.remove(this);
-			// Need to refresh effective priority
-			this.headLock.getEffectivePriority();
-		}
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
@@ -153,7 +146,7 @@ public class PriorityScheduler extends Scheduler {
 			// Checks if there is a thread with a lock
 			// Then removes its queue from the donation pool
 			if (this.headLock != null) {
-				removeDonation();
+				this.headLock.removeDonation(this);
 			}
 			
 			// Initial check of wait queue to see we need to keep going or not
@@ -353,6 +346,18 @@ public class PriorityScheduler extends Scheduler {
 			waitQueue.waitQueue.remove(this);
 			// Set this thread state to the thread with the lock
 			waitQueue.headLock = this;
+			// Adds this wait queue to the donation queue
+			addDonation(waitQueue);
+		}
+		
+		public void removeDonation(PriorityQueue waitQueue) {
+			// Removes this from the lock threads donation queue since no longer needed
+			donateQueue.remove(waitQueue);
+			// Need to refresh effective priority
+			getEffectivePriority();
+		}
+		
+		public void addDonation(PriorityQueue waitQueue) {
 			// Adds this queue to our donation queue
 			donateQueue.add(waitQueue);
 			// Need to refresh effective priority

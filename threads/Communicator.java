@@ -15,15 +15,15 @@ public class Communicator {
 	public void speak(int word) {
 		mutex.acquire();
 		
-		if (Listener.peek() != null) {
+		if (!Listener.isEmpty()) {
 			Message listen = Listener.removeFirst();
 			listen.setMsg(word);
-			listen.condition.wake();
+			listen.getCond().wake();
 		}
 		else {
 			Message spk = new Message(word);
 			Speaker.add(spk);
-			spk.condition.sleep();
+			spk.getCond().sleep();
 		}
 		
 		mutex.release();
@@ -33,15 +33,16 @@ public class Communicator {
 		mutex.acquire();
 		int word = 0;
 		
-		if (Speaker.peek() != null) {
+		if (!Speaker.isEmpty()) {
 			Message speaker = Speaker.removeFirst();
-			word = speaker.msg;
-			speaker.condition.wake();
+			word = speaker.getMsg();
+			speaker.getCond().wake();
 		}
 		else {
 			Message listener = new Message();
 			Listener.add(listener);
-			listener.condition.sleep();
+			listener.getCond().sleep();
+			word = listener.getMsg();
 		}
 		mutex.release();
 		return word;
@@ -49,8 +50,8 @@ public class Communicator {
 	
 
 	private class Message {
-		public int msg;
-		public Condition condition;
+		private int msg;
+		private Condition condition;
 
 		public Message(int word) {
 			msg = word;
@@ -61,9 +62,11 @@ public class Communicator {
 			condition = new Condition(mutex);
 		}
 		
-		public void setMsg(int word) {
-			msg = word;
-		}
+		public Condition getCond() { return condition; }
+		
+		public int getMsg() { return msg; }
+		
+		public void setMsg(int word) { msg = word; }
 
 	}
 	
@@ -231,6 +234,7 @@ public class Communicator {
 			System.out.println("Heard: " + msg);
 		}
 	}
-*/
+	*/
+
 	
 }

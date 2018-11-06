@@ -42,7 +42,6 @@ public class Communicator {
 			Message listener = new Message();
 			Listener.add(listener);
 			listener.condition.sleep();
-			word = listener.msg;
 		}
 		mutex.release();
 		return word;

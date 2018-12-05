@@ -129,26 +129,21 @@ int join(int processID, int *status);
  * Returns the new file descriptor, or -1 if an error occurred.
  */
 int creat(char *name);
-    /*String fileName = readVirtualMemoryString(name, maxFileNameLength);
-
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name pointer");
-			return -1;
-		}
-
-		if (deleted.contains(fileName)) {
-			Lib.debug(dbgProcess, "File is being deleted");
-			return -1;
-		}
-
-		OpenFile file = UserKernel.fileSystem.open(fileName, true);
-
-		if (file == null) {
-			Lib.debug(dbgProcess, "Create file failed");
-			return -1;
-		}
-
-		return descriptorManager.add(file);*/
+	String fileName = readVirtualMemoryString(*name, maxFileNameLength);
+	if (fileName == null) {
+		Lib.debug(dbgProcess, "Invalid file name pointer");
+		return -1;
+	}
+	if (deleted.contains(fileName)) {
+		Lib.debug(dbgProcess, "File is being deleted");
+		return -1;
+	}
+	OpenFile file = UserKernel.fileSystem.open(fileName, true);
+	if (file == null) {
+		Lib.debug(dbgProcess, "Create file failed");
+		return -1;
+	}
+	return descriptorManager.add(file);*/
 /**
  * Attempt to open the named file and return a file descriptor.
  *
@@ -158,27 +153,6 @@ int creat(char *name);
  * Returns the new file descriptor, or -1 if an error occurred.
  */
 int open(char *name);
-    /*String fileName = readVirtualMemoryString(name, maxFileNameLength);
-
-		if (fileName == null) {
-			Lib.debug(dbgProcess, "Invalid file name pointer");
-			return -1;
-		}
-
-		OpenFile file = UserKernel.fileSystem.open(fileName, false);
-
-		if (file == null) {
-			Lib.debug(dbgProcess, "Invalid file name");
-			return -1;
-		}
-
-		if (deleted.contains(fileName)) {
-			Lib.debug(dbgProcess, "File is being deleted");
-			return -1;
-		}
-
-		return descriptorManager.add(file);*/
-
 /**
  * Attempt to read up to count bytes into buffer from the file or stream
  * referred to by fileDescriptor.
@@ -199,35 +173,24 @@ int open(char *name);
  * invalid, or if a network stream has been terminated by the remote host and
  * no more data is available.
  */
+    	String fileName = readVirtualMemoryString(*name, maxFileNameLength);
+	if (fileName == null) {
+		Lib.debug(dbgProcess, "Invalid file name pointer");
+		return -1;
+	}
+	OpenFile file = UserKernel.fileSystem.open(fileName, false);
+	if (file == null) {
+		Lib.debug(dbgProcess, "Invalid file name");
+		return -1;
+	}
+	if (deleted.contains(fileName)) {
+		Lib.debug(dbgProcess, "File is being deleted");
+		return -1;
+	}
+	return descriptorManager.add(file);
+
+
 int read(int fileDescriptor, void *buffer, int count);
-    //This should theoretically work, but it's very unsafe.
-    //This code assumes the pointer buffer is to an integer, but
-    //we frankly don't know if it does.  ToDo: make this safer
-    //to handle the inevitable breaking tests.
-		/*OpenFile file = descriptorManager.get(fileDescriptor);
-    /*OpenFile file = descriptorManager.get(fileDescriptor);
-		if (file == null) {
-			Lib.debug(dbgProcess, "Invalid file descriptor");
-			return -1;
-		}
-
-		if (!(&buffer >= 0 && count >= 0)) {
-			Lib.debug(dbgProcess, "buffer and count should bigger then zero");
-			return -1;
-		}
-
-		byte buf[] = new byte[count];
-
-		int length = file.read(buf, 0, count);
-
-		if (length == -1) {
-			Lib.debug(dbgProcess, "Fail to read from file");
-			return -1;
-		}
-
-		length = writeVirtualMemory(buffer, buf, 0, length);
-
-		return length;*/
 /**
  * Attempt to write up to count bytes from buffer to the file or stream
  * referred to by fileDescriptor. write() can return before the bytes are
@@ -245,30 +208,38 @@ int read(int fileDescriptor, void *buffer, int count);
  * happen if fileDescriptor is invalid, if part of the buffer is invalid, or
  * if a network stream has already been terminated by the remote host.
  */
+	OpenFile file = descriptorManager.get(fileDescriptor);
+	if (file == null) {
+		Lib.debug(dbgProcess, "Invalid file descriptor");
+		return -1;
+	}
+	if (!(*buffer >= 0 && count >= 0)) {
+		Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+		return -1;
+	}
+	byte buf[] = new byte[count];
+	int length = file.read(buf, 0, count);
+	if (length == -1) {
+		Lib.debug(dbgProcess, "Fail to read from file");
+		return -1;
+	}
+	length = writeVirtualMemory(*buffer, buf, 0, length);
+	return length;
+
 int write(int fileDescriptor, void *buffer, int count);
-    //This should theoretically work, but it's very unsafe.
-    //This code assumes the pointer buffer is to an integer, but
-    //we frankly don't know if it does.  ToDo: make this safer
-    //to handle the inevitable breaking tests.
-		/*OpenFile file = descriptorManager.get(fileDescriptor);
-
-		if (file == null) {
-			Lib.debug(dbgProcess, "Invalid file descriptor");
-			return -1;
-		}
-
-		if (!(&buffer >= 0 && count >= 0)) {
-			Lib.debug(dbgProcess, "buffer and count should bigger then zero");
-			return -1;
-		}
-
-		byte buf[] = new byte[count];
-
-		int length = readVirtualMemory(&buffer, buf, 0, count);
-
-		length = file.write(buf, 0, length);
-
-		return length;*/
+	OpenFile file = descriptorManager.get(fileDescriptor);
+	if (file == null) {
+		Lib.debug(dbgProcess, "Invalid file descriptor");
+		return -1;
+	}
+	if (!(*buffer >= 0 && count >= 0)) {
+		Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+		return -1;
+	}
+	byte buf[] = new byte[count];
+	int length = readVirtualMemory(*buffer, buf, 0, count);
+	length = file.write(buf, 0, length);
+	return length;
 /**
  * Close a file descriptor, so that it no longer refers to any file or stream
  * and may be reused.
@@ -287,7 +258,7 @@ int write(int fileDescriptor, void *buffer, int count);
  * Returns 0 on success, or -1 if an error occurred.
  */
 int close(int fileDescriptor);
-    //return descriptorManager.close(fileDescriptor);
+	return descriptorManager.close(fileDescriptor);
 /**
  * Delete a file from the file system. If no processes have the file open, the
  * file is deleted immediately and the space it was using is made available for
@@ -345,66 +316,52 @@ int connect(int host, int port);
  */
 int accept(int port);
 public class DescriptorManager {
-		public OpenFile descriptor[] = new OpenFile[maxFileDescriptorNum];
-
-		public int add(int index, OpenFile file) {
-			if (index < 0 || index >= maxFileDescriptorNum)
-				return -1;
-
-			if (descriptor[index] == null) {
-				descriptor[index] = file;
-				if (files.get(file.getName()) != null) {
-					files.put(file.getName(), files.get(file.getName()) + 1);
-				}
-				else {
-					files.put(file.getName(), 1);
-				}
-				return index;
+	public OpenFile descriptor[] = new OpenFile[maxFileDescriptorNum];
+	public int add(int index, OpenFile file) {
+		if (index < 0 || index >= maxFileDescriptorNum) return -1;
+		if (descriptor[index] == null) {
+			descriptor[index] = file;
+			if (files.get(file.getName()) != null) {
+				files.put(file.getName(), files.get(file.getName()) + 1);
 			}
-
-			return -1;
-		}
-
-		public int add(OpenFile file) {
-			for (int i = 0; i < maxFileDescriptorNum; i++)
-				if (descriptor[i] == null)
-					return add(i, file);
-
-			return -1;
-		}
-
-		public int close(int fileDescriptor) {
-			if (descriptor[fileDescriptor] == null) {
-				Lib.debug(dbgProcess, "file descriptor " + fileDescriptor
-						+ " doesn't exist");
-				return -1;
-			}
-
-			OpenFile file = descriptor[fileDescriptor];
-			descriptor[fileDescriptor] = null;
-			file.close();
-
-			String fileName = file.getName();
-
-			if (files.get(fileName) > 1)
-				files.put(fileName, files.get(fileName) - 1);
 			else {
-				files.remove(fileName);
-				if (deleted.contains(fileName)) {
-					deleted.remove(fileName);
-					UserKernel.fileSystem.remove(fileName);
-				}
+				files.put(file.getName(), 1);
 			}
-
-			return 0;
+			return index;
 		}
 
-		public OpenFile get(int fileDescriptor) {
-			if (fileDescriptor < 0 || fileDescriptor >= maxFileDescriptorNum)
-				return null;
-			return descriptor[fileDescriptor];
-		}
+		return -1;
 	}
+	public int add(OpenFile file) {
+		for (int i = 0; i < maxFileDescriptorNum; i++)
+			if (descriptor[i] == null)return add(i, file);
+		return -1;
+	}
+	public int close(int fileDescriptor) {
+		if (descriptor[fileDescriptor] == null) {
+			Lib.debug(dbgProcess, "file descriptor " + fileDescriptor + " doesn't exist");
+			return -1;
+		}
+		OpenFile file = descriptor[fileDescriptor];
+		descriptor[fileDescriptor] = null;
+		file.close();
+		String fileName = file.getName();
+		if (files.get(fileName) > 1)files.put(fileName, files.get(fileName) - 1);
+		else {
+			files.remove(fileName);
+			if (deleted.contains(fileName)) {
+				deleted.remove(fileName);
+				UserKernel.fileSystem.remove(fileName);
+			}
+		}
+		return 0;
+	}
+	public OpenFile get(int fileDescriptor) {
+		if (fileDescriptor < 0 || fileDescriptor >= maxFileDescriptorNum)
+			return null;
+		return descriptor[fileDescriptor];
+	}
+}
 
 #endif /* START_S */
 

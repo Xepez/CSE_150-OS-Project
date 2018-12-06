@@ -243,8 +243,7 @@ public class UserProcess {
 
 		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
 		int endVirtualPage=Machine.processor().pageFromAddress(endvaddr);
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		
 
 		for(int i=startVirtualPage;i<=endVirtualPage;i++){
 			if(!lookUpPageTable(i).valid){
@@ -256,6 +255,10 @@ public class UserProcess {
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
 			}
+			
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+			
 			else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=pageEndVirtualAddress-vaddr+1;
@@ -333,8 +336,7 @@ public class UserProcess {
 
 		int endVirtualPage=Machine.processor().pageFromAddress(endVAddr);
 		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		
 
 		for(int i=startVirtualPage;i<=endVirtualPage;i++){
 
@@ -346,7 +348,10 @@ public class UserProcess {
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
 			}
-
+			
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+			
 			else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=0;
 				amount=endVAddr-pageStartVirtualAddress+1;

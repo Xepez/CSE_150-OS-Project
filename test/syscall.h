@@ -36,38 +36,35 @@ protected static final char dbgProcess = 'a';
 #ifndef START_S
 public class DescriptorController {
 	public OpenFile openf[] = new OpenFile[16];
-	public int add(int index, OpenFile file) {
-		if (index < 0 || index >= 16) return -1;
-		if (openf[index] == null) {
-			openf[index] = file;
+	public int add(int i, OpenFile file) {
+		if (i < 0 || i >= 16) return -1;
+		if (openf[i] == null) {
+			openf[i] = file;
 			if (files.get(file.getName()) != null) {
 				files.put(file.getName(), files.get(file.getName()) + 1);
 			}
 			else {
 				files.put(file.getName(), 1);
 			}
-			return index;
+			return i;
 		}
-
 		return -1;
 	}
 	public int add(OpenFile file) {
-		for (int i = 0; i < 16; i++)
-			if (openf[i] == null)return add(i, file);
+		for (int i = 0; i < 16; i++) if (openf[i] == null)return add(i, file);
 		return -1;
 	}
-	public OpenFile get(int fileDescriptor) {
-		if (fileDescriptor < 0 || fileDescriptor >= 16)
-			return null;
-		return openf[fileDescriptor];
+	public OpenFile get(int fDescriptor) {
+		if (fDescriptor < 0 || fDescriptor >= 16) return null;
+		return openf[fDescriptor];
 	}
-	public int close(int fileDescriptor) {
-		if (openf[fileDescriptor] == null) {
-			Lib.debug(dbgProcess, "file descriptor " + fileDescriptor + " doesn't exist");
+	public int close(int fDescriptor) {
+		if (openf[fDescriptor] == null) {
+			Lib.debug(dbgProcess, " file descriptor " + fDescriptor + " does not exist");
 			return -1;
 		}
-		OpenFile file = openf[fileDescriptor];
-		openf[fileDescriptor] = null;
+		OpenFile file = openf[fDescriptor];
+		openf[fDescriptor] = null;
 		file.close();
 		String fileName = file.getName();
 		if (files.get(fileName) > 1)files.put(fileName, files.get(fileName) - 1);
@@ -113,16 +110,16 @@ int join(int processID, int *status);
  * Returns the new file descriptor, or -1 if an error occurred.
  */
 int creat(char *name){
-	String fileName = readVirtualMemoryString(*name, 256);
-	if (fileName == null) {
-		Lib.debug(dbgProcess, "Invalid file name pointer");
+	String fName = readVirtualMemoryString(*name, 256);
+	if (fName == null) {
+		Lib.debug(dbgProcess, "Invalid file name.");
 		return -1;
 	}
-	if (deleted.contains(fileName)) {
-		Lib.debug(dbgProcess, "File is being deleted");
+	if (deleted.contains(fName)) {
+		Lib.debug(dbgProcess, "File is currently being deleted");
 		return -1;
 	}
-	OpenFile file = UserKernel.fileSystem.open(fileName, true);
+	OpenFile file = UserKernel.fileSystem.open(fName, true);
 	if (file == null) {
 		Lib.debug(dbgProcess, "Create file failed");
 		return -1;
@@ -140,16 +137,16 @@ int creat(char *name){
 int open(char *name){
 	String fileName = readVirtualMemoryString(*name, 256);
 	if (fileName == null) {
-		Lib.debug(dbgProcess, "Invalid file name pointer");
+		Lib.debug(dbgProcess, "Invalid file name.");
 		return -1;
 	}
 	OpenFile file = UserKernel.fileSystem.open(fileName, false);
 	if (file == null) {
-		Lib.debug(dbgProcess, "Invalid file name");
+		Lib.debug(dbgProcess, "File does not exist.");
 		return -1;
 	}
 	if (deleted.contains(fileName)) {
-		Lib.debug(dbgProcess, "File is being deleted");
+		Lib.debug(dbgProcess, "File is undergoing deletion.");
 		return -1;
 	}
 	return descControl.add(file);
@@ -181,22 +178,22 @@ int read(int fileDescriptor, void *buffer, int count){
 		buffr = *buffer;
 	}
 	catch (...){
-		Lib.debug(dbgProcess, "Invalid Buffer");
+		Lib.debug(dbgProcess, "Invalid Buffer.");
 		return -1;
 	}
 	OpenFile file = descControl.get(fileDescriptor);
 	if (file == null) {
-		Lib.debug(dbgProcess, "Invalid file descriptor");
+		Lib.debug(dbgProcess, "Invalid file descriptor.");
 		return -1;
 	}
 	if (!(buffr >= 0 && count >= 0)) {
-		Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+		Lib.debug(dbgProcess, "Both buffer and count should be bigger then zero!");
 		return -1;
 	}
 	byte buf[] = new byte[count];
 	int length = file.read(buf, 0, count);
 	if (length == -1) {
-		Lib.debug(dbgProcess, "Fail to read from file");
+		Lib.debug(dbgProcess, "Failed to read from the file.");
 		return -1;
 	}
 	length = writeVirtualMemory(buffr, buf, 0, length);
@@ -226,16 +223,16 @@ int write(int fileDescriptor, void *buffer, int count){
 		buffr = *buffer;
 	}
 	catch (...){
-		Lib.debug(dbgProcess, "Invalid Buffer");
+		Lib.debug(dbgProcess, "Invalid Buffer.");
 		return -1;
 	}
 	OpenFile file = descControl.get(fileDescriptor);
 	if (file == null) {
-		Lib.debug(dbgProcess, "Invalid file descriptor");
+		Lib.debug(dbgProcess, "Invalid file descriptor.");
 		return -1;
 	}
 	if (!(buffr >= 0 && count >= 0)) {
-		Lib.debug(dbgProcess, "buffer and count should bigger then zero");
+		Lib.debug(dbgProcess, "Both buffer and count should be bigger then zero!");
 		return -1;
 	}
 	byte buf[] = new byte[count];

@@ -80,7 +80,7 @@ public class UserProcess {
 		if (!load(absoluteFileName(name), args))
 			return false;
 
-		Lib.debug(dbgProcess, "process created, pid = " + pID);
+		Lib.debug(dbgProcess, "process created,  = " + processID);
 		//
 		thread = (UThread) (new UThread(this).setName(name));
 		thread.fork();

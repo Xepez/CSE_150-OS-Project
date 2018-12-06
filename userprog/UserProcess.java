@@ -34,7 +34,7 @@ public class UserProcess {
 		counterLock.release();
 		status=new Lock();
 
-		descriptors=new OpenFile[16];
+		type=new OpenFile[16];
 		boolean inStatus=Machine.interrupt().disable();
 		Machine.interrupt().restore(inStatus);
 

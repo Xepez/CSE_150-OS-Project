@@ -2,7 +2,8 @@ package nachos.userprog;
 
 import nachos.machine.*;
 import nachos.threads.*;
-
+import java.util.HashSet;
+import java.util.Hashtable;
 import java.io.EOFException;
 import java.util.*;
 

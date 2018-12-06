@@ -23,34 +23,32 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
-		int size=Machine.processor().getNumPhysPages();
-		pageTable = new TranslationEntry[size];
-		for (int i = 0; i < size; ++i){
+		int numPages = Machine.processor().getNumPhysPages();
+		pageTable = new TranslationEntry[numPages];
+		for (int i = 0; i < numPages; ++i){
 			pageTable[i] = new TranslationEntry(i, 0, false, false, false, false);
 		}
-
-		counterLock=new Lock();
+		
+		type = new OpenFile[16];
+		counterLock = new Lock();
+		status = new Lock();
+		
+		boolean currentStatus = Machine.interrupt().disable();
+		
 		counterLock.acquire();
+		processID = counter++;
 		counterLock.release();
-		status=new Lock();
-
-		type=new OpenFile[16];
-		boolean inStatus=Machine.interrupt().disable();
-		Machine.interrupt().restore(inStatus);
-
-		processID=counter++;
 
 		stdin = UserKernel.console.openForReading();
 		stdout = UserKernel.console.openForWriting();
 		type[0]=stdin;
 		type[1]=stdout;
+		
+		Machine.interrupt().restore(currentStatus);
 
-		parent=null;
-		children=new LinkedList<UserProcess>();
-		childrenExitStatus=new HashMap<Integer,Integer>();
-
-
-
+		parent = null;
+		children = new LinkedList<UserProcess>();
+		childrenExitStatus = new HashMap<Integer,Integer>();
 	}
 
 	/**
@@ -106,15 +104,15 @@ public class UserProcess {
 		return processID;
 	}
 
-	protected boolean allocate(int vpn, int desiredPages, boolean readOnly) {
-		//    	System.out.println("hehe");
+	public boolean allocate(int vpn, int desiredPages, boolean readOnly) {
+		
 		LinkedList<TranslationEntry> allocated = new LinkedList<TranslationEntry>();
 
 		for (int i = 0; i < desiredPages; ++i) {
 			if (vpn >= pageTable.length)
 				return false;
 
-			int ppn = UserKernel.makePage();
+			int ppn = UserKernel.getFreePage();
 			if (ppn == -1) {
 				Lib.debug(dbgProcess, "\tcannot allocate new page");
 
@@ -136,7 +134,7 @@ public class UserProcess {
 		return true;
 	}
 
-	protected void releaseResource() {
+	public void releaseResource() {
 		for (int i = 0; i < pageTable.length; ++i)
 			if (pageTable[i].valid) {
 				UserKernel.delPage(pageTable[i].ppn);
@@ -229,26 +227,23 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr +length-1>Machine.processor().makeAddress(numPages-1, pageSize-1)){
+		if (vaddr < 0 || vaddr + length - 1 > Processor.makeAddress(numPages-1, pageSize-1)){
 			Lib.debug(dbgProcess, "readVirtualMemory:Invalid virtual Address");
 			return 0;
 		}
 
+		int transferredCounter = 0;
+		int endvaddr = vaddr + length - 1;		
 
-		int transferredCounter=0;
-		int endvaddr=vaddr+length-1;
-		
+		int startVirtualPage = Processor.pageFromAddress(vaddr);
+		int endVirtualPage = Processor.pageFromAddress(endvaddr);
 
-		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
-		int endVirtualPage=Machine.processor().pageFromAddress(endvaddr);
-		
-
-		for(int i=startVirtualPage;i<=endVirtualPage;i++){
+		for(int i = startVirtualPage;i <= endVirtualPage; i++){
 			if(!lookUpPageTable(i).valid){
 				break;
 			}
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress = Processor.makeAddress(i, 0);
+		int pageEndVirtualAddress = Processor.makeAddress(i, pageSize-1);
 		int addrOffset;
 		int amount=0;
 
@@ -269,7 +264,7 @@ public class UserProcess {
 				addrOffset=0;
 				amount=pageSize;
 			}
-			int paddr=Machine.processor().makeAddress(lookUpPageTable(i).ppn, addrOffset);
+			int paddr = Processor.makeAddress(lookUpPageTable(i).ppn, addrOffset);
 			System.arraycopy(memory, paddr, data, offset+transferredCounter, amount);
 			transferredCounter+=amount;
 			//		pageTable[i].used=true;
@@ -321,50 +316,44 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr +length-1>Machine.processor().makeAddress(numPages-1, pageSize-1)){
+		if (vaddr < 0 || vaddr +length-1 > Processor.makeAddress(numPages-1, pageSize-1)){
 			Lib.debug(dbgProcess, "Memory:Invalid virtual address");
 			return 0;
 		}
 
 		int transferredCounter=0;
-		int endVAddr=vaddr+length-1;
+		int endVAddr = vaddr+length-1;
 		
 
-		int endVirtualPage=Machine.processor().pageFromAddress(endVAddr);
-		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
+		int endVirtualPage = Processor.pageFromAddress(endVAddr);
+		int startVirtualPage = Processor.pageFromAddress(vaddr);
 		
 
-		for(int i=startVirtualPage;i<=endVirtualPage;i++){
+		for(int i = startVirtualPage; i<= endVirtualPage; i++){
 
 			if(!lookUpPageTable(i).valid||lookUpPageTable(i).readOnly){
 				break;
 			}
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
-		int addrOffset;
-		int amount=0;
+			
+		int pageEndVirtualAddress = Processor.makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress = Processor.makeAddress(i, 0);
+		int addrOffset = 0;
+		int amount = pageSize;
 			if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
 			}
-
 			else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=0;
 				amount=endVAddr-pageStartVirtualAddress+1;
 			}
-
 			else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=pageEndVirtualAddress-vaddr+1;
 			}
 
-			else{
-				addrOffset=0;
-				amount=pageSize;
-			}
-
-			int paddr=Machine.processor().makeAddress(lookUpPageTable(i).vpn, addrOffset);
-			System.arraycopy(data, offset+transferredCounter, memory, paddr, amount);
+			int physaddr = Processor.makeAddress(lookUpPageTable(i).vpn, addrOffset);
+			System.arraycopy(data, offset+transferredCounter, memory, physaddr, amount);
 
 			transferredCounter+=amount;
 
@@ -497,10 +486,10 @@ public class UserProcess {
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
 
-				TranslationEntry te = lookUpPageTable(vpn);
-				if (te == null)
+				TranslationEntry trans = lookUpPageTable(vpn);
+				if (trans == null)
 					return false;
-				section.loadPage(i, te.ppn);
+				section.loadPage(i, trans.ppn);
 			}
 		}
 
@@ -512,12 +501,14 @@ public class UserProcess {
 	 */
 	protected void unloadSections() {
 		releaseResource();
-		for(int i=0;i<16;i++){
-			if(type[i]!=null){
+		
+		for(int i = 0; i < 16; i++){
+			if(type[i] != null){
 				type[i].close();
-				type[i]=null;
+				type[i] = null;
 			}	
 		}
+		
 		coff.close();
 
 	}

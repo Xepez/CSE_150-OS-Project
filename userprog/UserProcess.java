@@ -238,19 +238,20 @@ public class UserProcess {
 
 		int transferredCounter=0;
 		int endvaddr=vaddr+length-1;
-		int addrOffset;
-		int amount=0;
+		
 
 		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
 		int endVirtualPage=Machine.processor().pageFromAddress(endvaddr);
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		
 
 		for(int i=startVirtualPage;i<=endVirtualPage;i++){
 			if(!lookUpPageTable(i).valid){
 				break;
 			}
-
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		int addrOffset;
+		int amount=0;
 
 			if(vaddr>pageStartVirtualAddress&&endvaddr<pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
@@ -328,20 +329,21 @@ public class UserProcess {
 
 		int transferredCounter=0;
 		int endVAddr=vaddr+length-1;
-		int addrOffset;
-		int amount=0;
+		
 
 		int endVirtualPage=Machine.processor().pageFromAddress(endVAddr);
 		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		
 
 		for(int i=startVirtualPage;i<=endVirtualPage;i++){
 
 			if(!lookUpPageTable(i).valid||lookUpPageTable(i).readOnly){
 				break;
 			}
-
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		int addrOffset;
+		int amount=0;
 			if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
@@ -496,10 +498,10 @@ public class UserProcess {
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
 
-				TranslationEntry trans = lookUpPageTable(vpn);
-				if (trans == null)
+				TranslationEntry te = lookUpPageTable(vpn);
+				if (te == null)
 					return false;
-				section.loadPage(i, trans.vpn);
+				section.loadPage(i, te.ppn);
 			}
 		}
 

@@ -144,14 +144,12 @@ public class UserKernel extends ThreadedKernel {
 	}
 	
 	public static boolean delPage(int ppn) {
-		boolean ret = false;
 
 		pageLock.acquire();
-		openPages.add(new Integer(ppn));
-		ret = true;
+		boolean didAdd = openPages.add(new Integer(ppn));
 		pageLock.release();
 
-		return ret;
+		return didAdd;
 	
 	}
 	public static int getoffset(int dra) {

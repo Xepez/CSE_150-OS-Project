@@ -30,11 +30,9 @@ public class UserProcess {
 		}
 		
 		type = new OpenFile[16];
-		counterLock = new Lock();
-		status = new Lock();
-		
 		boolean currentStatus = Machine.interrupt().disable();
 		
+		counterLock = new Lock();
 		counterLock.acquire();
 		processID = counter++;
 		counterLock.release();
@@ -45,7 +43,7 @@ public class UserProcess {
 		type[1]=stdout;
 		
 		Machine.interrupt().restore(currentStatus);
-
+		status = new Lock();
 		parent = null;
 		children = new LinkedList<UserProcess>();
 		childrenExitStatus = new HashMap<Integer,Integer>();
@@ -227,7 +225,7 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr + length - 1 > Processor.makeAddress(numPages-1, pageSize-1)){
+		if (vaddr < 0 || vaddr + length - 1 > Machine.processor().makeAddress(numPages-1, pageSize-1)){
 			Lib.debug(dbgProcess, "readVirtualMemory:Invalid virtual Address");
 			return 0;
 		}
@@ -235,15 +233,15 @@ public class UserProcess {
 		int transferredCounter = 0;
 		int endvaddr = vaddr + length - 1;		
 
-		int startVirtualPage = Processor.pageFromAddress(vaddr);
-		int endVirtualPage = Processor.pageFromAddress(endvaddr);
+		int startVirtualPage = Machine.processor().pageFromAddress(vaddr);
+		int endVirtualPage = Machine.processor().pageFromAddress(endvaddr);
 
 		for(int i = startVirtualPage;i <= endVirtualPage; i++){
 			if(!lookUpPageTable(i).valid){
 				break;
 			}
-		int pageStartVirtualAddress = Processor.makeAddress(i, 0);
-		int pageEndVirtualAddress = Processor.makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress = Machine.processor().makeAddress(i, 0);
+		int pageEndVirtualAddress = Machine.processor().makeAddress(i, pageSize-1);
 		int addrOffset;
 		int amount=0;
 
@@ -264,7 +262,7 @@ public class UserProcess {
 				addrOffset=0;
 				amount=pageSize;
 			}
-			int paddr = Processor.makeAddress(lookUpPageTable(i).ppn, addrOffset);
+			int paddr = Machine.processor().makeAddress(lookUpPageTable(i).ppn, addrOffset);
 			System.arraycopy(memory, paddr, data, offset+transferredCounter, amount);
 			transferredCounter+=amount;
 			//		pageTable[i].used=true;
@@ -316,7 +314,7 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr +length-1 > Processor.makeAddress(numPages-1, pageSize-1)){
+		if (vaddr < 0 || vaddr +length-1 > Machine.processor().makeAddress(numPages-1, pageSize-1)){
 			Lib.debug(dbgProcess, "Memory:Invalid virtual address");
 			return 0;
 		}
@@ -325,8 +323,8 @@ public class UserProcess {
 		int endVAddr = vaddr+length-1;
 		
 
-		int endVirtualPage = Processor.pageFromAddress(endVAddr);
-		int startVirtualPage = Processor.pageFromAddress(vaddr);
+		int endVirtualPage = Machine.processor().pageFromAddress(endVAddr);
+		int startVirtualPage = Machine.processor().pageFromAddress(vaddr);
 		
 
 		for(int i = startVirtualPage; i<= endVirtualPage; i++){
@@ -335,8 +333,8 @@ public class UserProcess {
 				break;
 			}
 			
-		int pageEndVirtualAddress = Processor.makeAddress(i, pageSize-1);
-		int pageStartVirtualAddress = Processor.makeAddress(i, 0);
+		int pageEndVirtualAddress = Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress = Machine.processor().makeAddress(i, 0);
 		int addrOffset = 0;
 		int amount = pageSize;
 			if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
@@ -352,7 +350,7 @@ public class UserProcess {
 				amount=pageEndVirtualAddress-vaddr+1;
 			}
 
-			int physaddr = Processor.makeAddress(lookUpPageTable(i).vpn, addrOffset);
+			int physaddr = Machine.processor().makeAddress(lookUpPageTable(i).vpn, addrOffset);
 			System.arraycopy(data, offset+transferredCounter, memory, physaddr, amount);
 
 			transferredCounter+=amount;
@@ -521,19 +519,18 @@ public class UserProcess {
 	 * initialize all other registers to 0.
 	 */
 	public void initRegisters() {
-		Processor processor = Machine.processor();
 
 		// by default, everything's 0
 		for (int i = 0; i < Processor.numUserRegisters; i++)
-			processor.writeRegister(i, 0);
+			Machine.processor().writeRegister(i, 0);
 
 		// initialize PC and SP according
-		processor.writeRegister(Processor.regPC, initialPC);
-		processor.writeRegister(Processor.regSP, initialSP);
+		Machine.processor().writeRegister(Machine.processor().regPC, initialPC);
+		Machine.processor().writeRegister(Machine.processor().regSP, initialSP);
 
 		// initialize the first two argument registers to argc and argv
-		processor.writeRegister(Processor.regA0, argc);
-		processor.writeRegister(Processor.regA1, argv);
+		Machine.processor().writeRegister(Machine.processor().regA0, argc);
+		Machine.processor().writeRegister(Machine.processor().regA1, argv);
 	}
 
 	/**
@@ -925,24 +922,23 @@ public class UserProcess {
 	/**
 	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
 	 * . The <i>cause</i> argument identifies which exception occurred; see the
-	 * <tt>Processor.exceptionZZZ</tt> constants.
+	 * <tt>Machine.processor().exceptionZZZ</tt> constants.
 	 * 
 	 * @param cause
 	 *            the user exception that occurred.
 	 */
 
 	public void handleException(int cause) {
-		Processor processor = Machine.processor();
 
 		switch (cause) {
 		case Processor.exceptionSyscall:
-			int result = handleSyscall(processor.readRegister(Processor.regV0),
-					processor.readRegister(Processor.regA0), processor
-					.readRegister(Processor.regA1), processor
-					.readRegister(Processor.regA2), processor
-					.readRegister(Processor.regA3));
-			processor.writeRegister(Processor.regV0, result);
-			processor.advancePC();
+			int result = handleSyscall(Machine.processor().readRegister(Machine.processor().regV0),
+					Machine.processor().readRegister(Machine.processor().regA0), Machine.processor()
+					.readRegister(Machine.processor().regA1), Machine.processor()
+					.readRegister(Machine.processor().regA2), Machine.processor()
+					.readRegister(Machine.processor().regA3));
+			Machine.processor().writeRegister(Processor.regV0, result);
+			Machine.processor().advancePC();
 			break;
 
 		default:

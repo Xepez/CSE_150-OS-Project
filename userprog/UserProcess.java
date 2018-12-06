@@ -38,13 +38,13 @@ public class UserProcess {
 		counterLock.release();
 		stdin = UserKernel.console.openForReading();
 		stdout = UserKernel.console.openForWriting();
-		descriptors[0]=stdin;
-		descriptors[1]=stdout;
+		type[0]=stdin;
+		type[1]=stdout;
 		Machine.interrupt().restore(inStatus);
 		parent=null;
 		children=new LinkedList<UserProcess>();
 		childrenExitStatus=new HashMap<Integer,Integer>();
-		statusLock=new Lock();
+		status=new Lock();
 
 
     }
@@ -232,27 +232,35 @@ public class UserProcess {
 
 
 	int transferredCounter=0;
-	int endVAddr=vaddr+length-1;
+	int endvaddr=vaddr+length-1;
+	int addrOffset;
+	int amount=0;
+	
 	int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
-	int endVirtualPage=Machine.processor().pageFromAddress(endVAddr);
+	int endVirtualPage=Machine.processor().pageFromAddress(endvaddr);
+	int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+	int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+	
 	for(int i=startVirtualPage;i<=endVirtualPage;i++){
 		if(!lookUpPageTable(i).valid){
 			break;
 		}
-		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
-		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
-		int addrOffset;
-		int amount=0;
+		
+	
 		if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 			addrOffset=vaddr-pageStartVirtualAddress;
 			amount=length;
-		}else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
-			addrOffset=0;
-			amount=endVAddr-pageStartVirtualAddress+1;
-		}else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
+		}
+		else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
 			addrOffset=vaddr-pageStartVirtualAddress;
 			amount=pageEndVirtualAddress-vaddr+1;
-		}else{
+		}
+		else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
+			addrOffset=0;
+			amount=endVAddr-pageStartVirtualAddress+1;
+		}
+	
+		else{
 			addrOffset=0;
 			amount=pageSize;
 		}
@@ -309,45 +317,56 @@ public class UserProcess {
 
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr +length-1>Machine.processor().makeAddress(numPages-1, pageSize-1)){
-			Lib.debug(dbgProcess, "writeMemory:Invalid virtual address");
+			Lib.debug(dbgProcess, "Memory:Invalid virtual address");
 			return 0;
 		}
 
 		int transferredCounter=0;
-		int endVAddr=vaddr+length-1;//
-		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
+		int endVAddr=vaddr+length-1;
+		int addrOffset;
+		int amount=0;
+		
 		int endVirtualPage=Machine.processor().pageFromAddress(endVAddr);
+		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		
 		for(int i=startVirtualPage;i<=endVirtualPage;i++){
+			
 			if(!lookUpPageTable(i).valid||lookUpPageTable(i).readOnly){
 				break;
 			}
-			int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
-			int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
-			int addrOffset;
-			int amount=0;
+		
 			if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
-			}else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
-				addrOffset=vaddr-pageStartVirtualAddress;
-				amount=pageEndVirtualAddress-vaddr+1;
-			}else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
+			}
+			
+			else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=0;
 				amount=endVAddr-pageStartVirtualAddress+1;
-			}else{
+			}
+			
+			else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
+				addrOffset=vaddr-pageStartVirtualAddress;
+				amount=pageEndVirtualAddress-vaddr+1;
+			}
+			
+			else{
 				addrOffset=0;
 				amount=pageSize;
 			}
-			int paddr=Machine.processor().makeAddress(lookUpPageTable(i).ppn, addrOffset);
+			
+			int paddr=Machine.processor().makeAddress(lookUpPageTable(i).vpn, addrOffset);
 			System.arraycopy(data, offset+transferredCounter, memory, paddr, amount);
+			
 			transferredCounter+=amount;
-//			pageTable[i].used=true;
-//			pageTable[i].dirty=true;
+
 		}
 
 
 		return transferredCounter;
-//	
+	
 
     }
 
@@ -472,10 +491,10 @@ public class UserProcess {
             for (int i = 0; i < section.getLength(); i++) {
                 int vpn = section.getFirstVPN() + i;
 
-                TranslationEntry te = lookUpPageTable(vpn);
-                if (te == null)
+                TranslationEntry trans = lookUpPageTable(vpn);
+                if (trans == null)
                     return false;
-                section.loadPage(i, te.ppn);
+                section.loadPage(i, trans.vpn);
             }
         }
 
@@ -488,9 +507,9 @@ public class UserProcess {
     protected void unloadSections() {
     	releaseResource();
     	for(int i=0;i<16;i++){
-			if(descriptors[i]!=null){
-				descriptors[i].close();
-				descriptors[i]=null;
+			if(type[i]!=null){
+				type[i].close();
+				type[i]=null;
 			}	
 		}
 		coff.close();
@@ -528,7 +547,7 @@ public class UserProcess {
     }
 
     private int handleHalt() {
-		if(pID!=0){
+		if(processID!=0){
 			return 0;
 		}
 
@@ -537,13 +556,104 @@ public class UserProcess {
 		Lib.assertNotReached("Machine.halt() did not halt machine!");
 		return 0;
 	}
+    
+    private int handleRead(int typeD,int bufferVAddr,int size){
+		if(typeD<0||typeD>15){
+			Lib.debug(dbgProcess, "Read:Descriptor out of range");
+			return -1;
+		}
+		if(size<0){
+			Lib.debug(dbgProcess, "Read:Size to read cannot be negative");
+			return -1;
+		}
+		OpenFile file;
+		if(type[typeD]==null){
+			Lib.debug(dbgProcess, "Read:File doesn't exist in the descriptor table");
+			return -1;
+		}else{
+			file=type[typeD];
+		}
+		int length=0;
+		byte[] reader=new byte[size];
+		length=file.read(reader, 0, size);
+		if(length==-1){
+			Lib.debug(dbgProcess, "Read:Error occurred when try to read file");
+			return -1;
+		}
+		int count=0;
+		count=writeVirtualMemory(bufferVAddr,reader,0,length);
+		return count;
 
+	}
+    
+    private int handleCreate(int vaddr){
+		if(vaddr<0){
+			Lib.debug(dbgProcess, "Create:Invalid virtual address");
+			return -1;
+		}
+		String fileName=readVirtualMemoryString(vaddr,256);
+		if(fileName==null){
+			Lib.debug(dbgProcess, "Create:Read filename failed");
+			return -1;
+		}
+		int availableIndex=-1;
+		for(int i=0;i<16;i++){
+			if(type[i]==null){
+				availableIndex=i;
+				break;
+			}
+		}
+		if(availableIndex==-1){
+			Lib.debug(dbgProcess, "Create:Cannot create more than 16 files");
+			return -1;
+		}else{
+			OpenFile file=ThreadedKernel.fileSystem.open(fileName, true);
+			if(file==null){
+				Lib.debug(dbgProcess, "Create:Create failed");
+				return-1;
+			}else{
+				type[availableIndex]=file;
+				return availableIndex;
+			}		
+		}	
+
+	}
+
+	private int handleWrite(int typeD,int bufferVAddr,int size){
+		if(typeD<0||typeD>15){
+			Lib.debug(dbgProcess,"Wirte:type out of range");
+			return -1;
+		}
+		if(size<0){
+			Lib.debug(dbgProcess, "Write:Size  cannot be negative");
+			return -1;	
+		}
+		OpenFile file;
+		if(type[typeD]==null){
+			Lib.debug(dbgProcess, "Write:File doesn't exist");
+			return -1;
+		}else{
+			file=type[typeD];
+		}
+		int length=0;
+		byte[] writer=new byte[size];
+		length=readVirtualMemory(bufferVAddr,writer,0,size);
+		int count=0;
+		count=file.write(writer, 0, length);
+		//System.out.println(size==count);
+		if(count==-1){
+			Lib.debug(dbgProcess, "Write:Error occured");
+			return -1;
+		}
+		return count;
+	}
+	
 	private int handleExit(int status){
 		if(parent!=null){
 			parent.statusLock.acquire();
-			parent.childrenExitStatus.put(pID, status);
+			parent.childExit.put(processID, status);
 			parent.statusLock.release();
-			//parent.children.remove(this);
+			
 		}
 		unloadSections();
 		int childrenNum=children.size();
@@ -551,9 +661,9 @@ public class UserProcess {
 			UserProcess child=children.removeFirst();
 			child.parent=null;
 		}
-		System.out.println("hehe exit"+pID+status);
+		System.out.println("exit"+processID+status);
 
-		if(pID==0){
+		if(processID==0){
 			Kernel.kernel.terminate();
 		}else{
 			UThread.finish();
@@ -561,34 +671,81 @@ public class UserProcess {
 		return 0;
 
 	}
-//
-	private int handleExec(int nameVAddr,int argsNum,int argsVAddr ){
-		if(nameVAddr<0||argsNum<0||argsVAddr<0){
-			Lib.debug(dbgProcess, "handleExec:Invalid parameter");
+	
+	private int handleJoin(int processID,int statusV){
+		if(pID<0||statusV<0){
 			return -1;
 		}
-		String fileName=readVirtualMemoryString(nameVAddr, 256);
+		UserProcess child=null;
+		int childrenNum=children.size();
+		for(int i=0;i<childrenNum;i++){
+			if(children.get(i).processID==processID){
+				child=children.get(i);
+				break;
+			}
+		}
+		
+		if(child==null){
+			Lib.debug(dbgProcess, "handleJoin:processID is not the child");
+			return -1;
+		}
+	
+		child.thread.join();
+
+		child.parent=null;
+		
+		children.remove(child);
+		
+		statusLock.acquire();
+		Integer status=childrenExitStatus.get(child.pID);
+		statusLock.release();
+		
+		if(status==null){
+			Lib.debug(dbgProcess, "Join:Cannot find the exit status of the child");
+			return 0;
+		}
+		else{
+			
+			byte[] buffer=new byte[4];
+			buffer=Lib.bytesFromInt(status);
+			int count=writeVirtualMemory(statusV,buffer);
+			if(count==4){
+				return 1;
+			}else{
+				Lib.debug(dbgProcess, "Join:Write status failed");
+				return 0;
+			}
+		}
+	}
+	
+	private int handleExec(int name,int num,int argsV ){
+		if(name<0||num<0||argsV<0){
+			Lib.debug(dbgProcess, "eExec:Invalid parameter");
+			return -1;
+		}
+		String fileName=readVirtualMemoryString(name, 256);
 		if(fileName==null){
-			Lib.debug(dbgProcess, "handleExec:Read filename failed");
+			Lib.debug(dbgProcess, "Exec:Read filename failed");
 			return -1;
 		}
 		if(!fileName.contains(".coff")){
-			Lib.debug(dbgProcess, "handleExec:Filename should end with .coff");
+			Lib.debug(dbgProcess, "Exec:Filename needs to end with .coff");
 			return -1;
 		}
-		String[] args=new String[argsNum];
-		for(int i=0;i<argsNum;i++){
+	
+		String[] args=new String[num];
+		for(int i=0;i<num;i++){
 			byte[] buffer=new byte[4];
 			int readLength;
-			readLength=readVirtualMemory(argsVAddr+i*4,buffer);
+			readLength=readVirtualMemory(argsV+i*4,buffer);
 			if(readLength!=4){
-				Lib.debug(dbgProcess, "handleExec:Read argument address falied");
+				Lib.debug(dbgProcess, "Exec:Read arg faijled");
 				return -1;
 			}
-			int argVAddr=Lib.bytesToInt(buffer, 0);
-			String arg=readVirtualMemoryString(argVAddr,256);
+			int argV=Lib.bytesToInt(buffer, 0);
+			String arg=readVirtualMemoryString(argV,256);
 			if(arg==null){
-				Lib.debug(dbgProcess, "handleExec:Read argument failed");
+				Lib.debug(dbgProcess, "Exec:Read arg failed");
 				return -1;
 			}
 			args[i]=arg;
@@ -596,91 +753,15 @@ public class UserProcess {
 		UserProcess child=UserProcess.newUserProcess();
 		boolean isSuccessful=child.execute(fileName, args);
 		if(!isSuccessful){
-			Lib.debug(dbgProcess, "handleExec:Execute child process failed");
+			Lib.debug(dbgProcess, "Exec:Execute child process failed");
 			return -1;
 		}
 		child.parent=this;
 		this.children.add(child);
-		int id=child.pID;
+		int id=child.processID;
 		return id;
 	}
-
-	private int handleJoin(int pID,int statusVAddr){
-		if(pID<0||statusVAddr<0){
-			return -1;
-		}
-		UserProcess child=null;
-		int childrenNum=children.size();
-		for(int i=0;i<childrenNum;i++){
-			if(children.get(i).pID==pID){
-				child=children.get(i);
-				break;
-			}
-		}
-		
-		if(child==null){
-			Lib.debug(dbgProcess, "handleJoin:pID is not the child");
-			return -1;
-		}
-		//System.out.println("debug information"+child.pID);
-		child.thread.join();
-
-		child.parent=null;
-		children.remove(child);
-		statusLock.acquire();
-		Integer status=childrenExitStatus.get(child.pID);
-		statusLock.release();
-		if(status==null){
-			Lib.debug(dbgProcess, "handleJoin:Cannot find the exit status of the child");
-			return 0;
-		}else{
-			//status int 32bits
-			byte[] buffer=new byte[4];
-			buffer=Lib.bytesFromInt(status);
-			int count=writeVirtualMemory(statusVAddr,buffer);
-			if(count==4){
-				return 1;
-			}else{
-				Lib.debug(dbgProcess, "handleJoin:Write status failed");
-				return 0;
-			}
-		}
-	}
-
-	private int handleCreate(int vaddr){
-		if(vaddr<0){
-			Lib.debug(dbgProcess, "handleCreate:Invalid virtual address");
-			return -1;
-		}
-		String fileName=readVirtualMemoryString(vaddr,256);
-		if(fileName==null){
-			Lib.debug(dbgProcess, "handleCreate:Read filename failed");
-			return -1;
-		}
-		int availableIndex=-1;
-		for(int i=0;i<16;i++){
-			if(descriptors[i]==null){
-				availableIndex=i;
-				break;
-			}
-		}
-		if(availableIndex==-1){
-			Lib.debug(dbgProcess, "handleCreate:Cannot create more than 16 files");
-			return -1;
-		}else{
-			OpenFile file=ThreadedKernel.fileSystem.open(fileName, true);
-			if(file==null){
-				Lib.debug(dbgProcess, "handleCreate:Create failed");
-				return-1;
-			}else{
-				descriptors[availableIndex]=file;
-				return availableIndex;
-			}		
-		}	
-
-	}
-
-
+	
 	private int handleOpen(int vaddr){
 		if(vaddr<0){
 			Lib.debug(dbgProcess, "handleOpen:Invalid virtual address");
@@ -694,125 +775,70 @@ public class UserProcess {
 		}
 		int availableIndex=-1;
 		for(int i=0;i<16;i++){
-			if(descriptors[i]==null){
+			if(type[i]==null){
 				availableIndex=i;
 				break;
 			}
 		}
 		if(availableIndex==-1){
-			Lib.debug(dbgProcess, "handleOpen:Cannot create more than 16 files");
+			Lib.debug(dbgProcess, "Open:Cannot make more than 15 files");
 			return -1;
 		}else{
 			OpenFile file=ThreadedKernel.fileSystem.open(fileName, false);
 			if(file==null){
-				Lib.debug(dbgProcess, "handleOpen:Open failed");
+				Lib.debug(dbgProcess, "Open:Open failed");
 				return -1;
 			}else{
-				descriptors[availableIndex]=file;
+				type[availableIndex]=file;
 				return availableIndex;
 			}
 		}
 	}
 	
-	private int handleRead(int descriptor,int bufferVAddr,int size){
-		if(descriptor<0||descriptor>15){
-			Lib.debug(dbgProcess, "handleRead:Descriptor out of range");
+	
+
+	private int handleClose(int typeD){
+		if(typeD<0||typeD>15){
+			Lib.debug(dbgProcess, "Close:Descriptor out of range");
 			return -1;
 		}
-		if(size<0){
-			Lib.debug(dbgProcess, "handleRead:Size to read cannot be negative");
-			return -1;
-		}
-		OpenFile file;
-		if(descriptors[descriptor]==null){
-			Lib.debug(dbgProcess, "handleRead:File doesn't exist in the descriptor table");
+		if(type[typeD]==null){
+			Lib.debug(dbgProcess, "Close:File doesn't exist in the descriptor table");
 			return -1;
 		}else{
-			file=descriptors[descriptor];
-		}
-		int length=0;
-		byte[] reader=new byte[size];
-		length=file.read(reader, 0, size);
-		if(length==-1){
-			Lib.debug(dbgProcess, "handleRead:Error occurred when try to read file");
-			return -1;
-		}
-		int count=0;
-		count=writeVirtualMemory(bufferVAddr,reader,0,length);
-		return count;
-
-	}
-
-	private int handleWrite(int descriptor,int bufferVAddr,int size){
-		if(descriptor<0||descriptor>15){
-			Lib.debug(dbgProcess,"hanleWirte:Descriptor out of range");
-			return -1;
-		}
-		if(size<0){
-			Lib.debug(dbgProcess, "handleWrite:Size to write cannot be negative");
-			return -1;	
-		}
-		OpenFile file;
-		if(descriptors[descriptor]==null){
-			Lib.debug(dbgProcess, "handleWrite:File doesn't exist in the descriptor table");
-			return -1;
-		}else{
-			file=descriptors[descriptor];
-		}
-		int length=0;
-		byte[] writer=new byte[size];
-		length=readVirtualMemory(bufferVAddr,writer,0,size);
-		int count=0;
-		count=file.write(writer, 0, length);
-		//System.out.println(size==count);
-		if(count==-1){
-			Lib.debug(dbgProcess, "handleWrite:Error occur when read file");
-			return -1;
-		}
-		return count;
-	}
-
-	private int handleClose(int descriptor){
-		if(descriptor<0||descriptor>15){
-			Lib.debug(dbgProcess, "handleClose:Descriptor out of range");
-			return -1;
-		}
-		if(descriptors[descriptor]==null){
-			Lib.debug(dbgProcess, "handleClose:File doesn't exist in the descriptor table");
-			return -1;
-		}else{
-			descriptors[descriptor].close();
-			descriptors[descriptor]=null;
+			type[typeD].close();
+			type[typeD]=null;
 		}
 		return 0;
 	}
+	
 
 	private int handleUnlink(int vaddr){
 		if(vaddr<0){
-			Lib.debug(dbgProcess, "handleUnlink:Invalid virtual address");
+			Lib.debug(dbgProcess, "Unlink:Invalid virtual address");
 			return -1;
 		}
 		String fileName=readVirtualMemoryString(vaddr,256);
 		if(fileName==null){
-			Lib.debug(dbgProcess, "handleUnlink:Read filename failed");
+			Lib.debug(dbgProcess, "Unlink:Read filename failed");
 			return -1;
 		}
 		OpenFile file;
 		int index=-1;
 		for(int i=0;i<16;i++){
-			file=descriptors[i];
+			file=type[i];
 			if(file!=null&&file.getName().compareTo(fileName)==0){
 				index=i;
 				break;
 			}
 		}	
 		if(index!=-1){
-			Lib.debug(dbgProcess, "handleUnlink:File should be closed first");
+			Lib.debug(dbgProcess, "Unlink:File should be closed first");
 			return -1;
 		}
 		boolean isSuccessful=ThreadedKernel.fileSystem.remove(fileName);
 		if(!isSuccessful){
-			Lib.debug(dbgProcess, "handleUnlink:Remove failed");
+			Lib.debug(dbgProcess, "Unlink:Remove failed");
 			return -1;
 		}
 
@@ -827,84 +853,60 @@ public class UserProcess {
             syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
             syscallRead = 6, syscallWrite = 7, syscallClose = 8,
             syscallUnlink = 9;
-
+    
     /**
      * Handle a syscall exception. Called by <tt>handleException()</tt>. The
      * <i>syscall</i> argument identifies which syscall the user executed:
-     * 
+     *
      * <table>
-     * <tr>
-     * <td>syscall#</td>
-     * <td>syscall prototype</td>
-     * </tr>
-     * <tr>
-     * <td>0</td>
-     * <td><tt>void halt();</tt></td>
-     * </tr>
-     * <tr>
-     * <td>1</td>
-     * <td><tt>void exit(int status);</tt></td>
-     * </tr>
-     * <tr>
-     * <td>2</td>
-     * <td><tt>int  exec(char *name, int argc, char **argv);
-     *                              </tt></td>
-     * </tr>
-     * <tr>
-     * <td>3</td>
-     * <td><tt>int  join(int pid, int *status);</tt></td>
-     * </tr>
-     * <tr>
-     * <td>4</td>
-     * <td><tt>int  creat(char *name);</tt></td>
-     * </tr>
-     * <tr>
-     * <td>5</td>
-     * <td><tt>int  open(char *name);</tt></td>
-     * </tr>
-     * <tr>
-     * <td>6</td>
-     * <td><tt>int  read(int fd, char *buffer, int size);
-     *                              </tt></td>
-     * </tr>
-     * <tr>
-     * <td>7</td>
-     * <td><tt>int  write(int fd, char *buffer, int size);
-     *                              </tt></td>
-     * </tr>
-     * <tr>
-     * <td>8</td>
-     * <td><tt>int  close(int fd);</tt></td>
-     * </tr>
-     * <tr>
-     * <td>9</td>
-     * <td><tt>int  unlink(char *name);</tt></td>
-     * </tr>
+     * <tr><td>syscall#</td><td>syscall prototype</td></tr>
+     * <tr><td>0</td><td><tt>void halt();</tt></td></tr>
+     * <tr><td>1</td><td><tt>void exit(int status);</tt></td></tr>
+     * <tr><td>2</td><td><tt>int  exec(char *name, int argc, char **argv);
+     * 								</tt></td></tr>
+     * <tr><td>3</td><td><tt>int  join(int pid, int *status);</tt></td></tr>
+     * <tr><td>4</td><td><tt>int  creat(char *name);</tt></td></tr>
+     * <tr><td>5</td><td><tt>int  open(char *name);</tt></td></tr>
+     * <tr><td>6</td><td><tt>int  read(int fd, char *buffer, int size);
+     *								</tt></td></tr>
+     * <tr><td>7</td><td><tt>int  write(int fd, char *buffer, int size);
+     *								</tt></td></tr>
+     * <tr><td>8</td><td><tt>int  close(int fd);</tt></td></tr>
+     * <tr><td>9</td><td><tt>int  unlink(char *name);</tt></td></tr>
      * </table>
      * 
-     * @param syscall
-     *            the syscall number.
-     * @param a0
-     *            the first syscall argument.
-     * @param a1
-     *            the second syscall argument.
-     * @param a2
-     *            the third syscall argument.
-     * @param a3
-     *            the fourth syscall argument.
-     * @return the value to be returned to the user.
+     * @param	syscall	the syscall number.
+     * @param	a0	the first syscall argument.
+     * @param	a1	the second syscall argument.
+     * @param	a2	the third syscall argument.
+     * @param	a3	the fourth syscall argument.
+     * @return	the value to be returned to the user.
      */
+
     public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
         switch (syscall) {
         case syscallHalt:
             return handleHalt();
-
+            
+        default:
+            Lib.debug(dbgProcess, "Unknown syscall " + syscall);
+            Lib.assertNotReached("Unknown system call!, goodbye");
+            
         case syscallCreate:
-            Lib.debug(dbgProcess, "Create called from process " + pID);
+            Lib.debug(dbgProcess, "Create called from process " + processID);
             return handleCreate(a0);
-
-        case syscallOpen:
-            return handleOpen(a0);
+            
+        case syscallClose:
+            Lib.debug(dbgProcess, "Close called from process " + processID);
+            return handleClose(a0);
+            
+        case syscallJoin:
+            Lib.debug(dbgProcess, "Join called from process " + processID);
+            return handleJoin(a0, a1);
+            
+        case syscallUnlink:
+            Lib.debug(dbgProcess, "Unlink called from process " + processID);
+            return handleUnlink(a0);
 
         case syscallRead:
             return handleRead(a0, a1, a2);
@@ -912,31 +914,17 @@ public class UserProcess {
         case syscallWrite:
             return handleWrite(a0, a1, a2);
 
-        case syscallClose:
-            Lib.debug(dbgProcess, "Close called from process " + pID);
-            return handleClose(a0);
-
-        case syscallUnlink:
-            Lib.debug(dbgProcess, "Unlink called from process " + pID);
-            return handleUnlink(a0);
-
         case syscallExec:
             return handleExec(a0, a1, a2);
 
-        case syscallJoin:
-            Lib.debug(dbgProcess, "Join called from process " + pID);
-            return handleJoin(a0, a1);
-
+        case syscallOpen:
+            return handleOpen(a0);
+            
         case syscallExit:
             return handleExit(a0);
-
-        default:
-            Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-            Lib.assertNotReached("Unknown system call!");
         }
         return 0;
-    }
-
+    }   
     /**
      * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
      * . The <i>cause</i> argument identifies which exception occurred; see the
@@ -945,6 +933,7 @@ public class UserProcess {
      * @param cause
      *            the user exception that occurred.
      */
+    
     public void handleException(int cause) {
         Processor processor = Machine.processor();
 
@@ -972,36 +961,38 @@ public class UserProcess {
     protected Coff coff;
 
     /** This process's page table. */
-    protected TranslationEntry[] pageTable;
+     protected TranslationEntry[] pageTable;
+    
     /** The number of pages occupied by the program. */
     protected int numPages;
-
+    protected OpenFile stdin;
+	protected OpenFile stdout;
+	protected OpenFile[] type;
+	
     /** The number of pages in the program's stack. */
     protected final int stackPages = Config.getInteger("Processor.numStackPages", 8);
-
-    protected int initialPC, initialSP;
-    protected int argc, argv;
-
     protected static final int pageSize = Processor.pageSize;
     protected static final char dbgProcess = 'a';
-
-
-
-	protected Lock counterLock = new Lock();
-
-	protected OpenFile[] descriptors;
+    protected int initialPC, initialSP;
+    protected int argc, argv;
+    
+    //Instantiate locks
+    protected Lock countLock = new Lock();
+	protected Lock statusLock = new Lock();
 	
+	// parents and children list/hash
 	protected UserProcess parent;
 	protected LinkedList<UserProcess> children;
-
-	protected HashMap<Integer,Integer> childrenExitStatus;
-	protected Lock statusLock;
-	protected UThread thread;
-	protected static int counter = 0;
-	protected int pID;
+	protected HashMap<Integer,Integer> childExit;
 	
-	protected OpenFile stdin;
-
-	protected OpenFile stdout;
+	//Instantiation for thread(s)
+	protected UThread thread;
+	
+	//Instantiate counter and processID
+	protected static int counter = 0;
+	protected int processID;
+	
+	
 
 }
+

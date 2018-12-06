@@ -124,12 +124,20 @@ int open(char *name){
  */
 
 int read(int fileDescriptor, void *buffer, int count){
+	int buffr;
+	try{
+		buffr = *buffer;
+	}
+	catch (...){
+		Lib.debug(dbgProcess, "Invalid Buffer");
+		return -1;
+	}
 	OpenFile file = descriptorManager.get(fileDescriptor);
 	if (file == null) {
 		Lib.debug(dbgProcess, "Invalid file descriptor");
 		return -1;
 	}
-	if (!(*buffer >= 0 && count >= 0)) {
+	if (!(buffr >= 0 && count >= 0)) {
 		Lib.debug(dbgProcess, "buffer and count should bigger then zero");
 		return -1;
 	}
@@ -139,7 +147,7 @@ int read(int fileDescriptor, void *buffer, int count){
 		Lib.debug(dbgProcess, "Fail to read from file");
 		return -1;
 	}
-	length = writeVirtualMemory(*buffer, buf, 0, length);
+	length = writeVirtualMemory(buffr, buf, 0, length);
 	return length;
 }
 /**
@@ -161,17 +169,25 @@ int read(int fileDescriptor, void *buffer, int count){
  */
 
 int write(int fileDescriptor, void *buffer, int count){
+	int buffr;
+	try{
+		buffr = *buffer;
+	}
+	catch (...){
+		Lib.debug(dbgProcess, "Invalid Buffer");
+		return -1;
+	}
 	OpenFile file = descriptorManager.get(fileDescriptor);
 	if (file == null) {
 		Lib.debug(dbgProcess, "Invalid file descriptor");
 		return -1;
 	}
-	if (!(*buffer >= 0 && count >= 0)) {
+	if (!(buffr >= 0 && count >= 0)) {
 		Lib.debug(dbgProcess, "buffer and count should bigger then zero");
 		return -1;
 	}
 	byte buf[] = new byte[count];
-	int length = readVirtualMemory(*buffer, buf, 0, count);
+	int length = readVirtualMemory(buffr, buf, 0, count);
 	length = file.write(buf, 0, length);
 	return length;
 }

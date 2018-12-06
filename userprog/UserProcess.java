@@ -80,7 +80,7 @@ public class UserProcess {
 		if (!load(absoluteFileName(name), args))
 			return false;
 
-		Lib.debug(dbgProcess, "process created, pid = " + pID);
+		Lib.debug(dbgProcess, "process created, processID = " + processID);
 		//
 		thread = (UThread) (new UThread(this).setName(name));
 		thread.fork();
@@ -103,8 +103,8 @@ public class UserProcess {
 		Machine.processor().setPageTable(pageTable);
 	}
 
-	public int getPid() {
-		return pID;
+	public int getprocessID() {
+		return processID;
 	}
 
 	protected boolean allocate(int vpn, int desiredPages, boolean readOnly) {
@@ -252,17 +252,17 @@ public class UserProcess {
 			}
 
 
-			if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
+			if(vaddr>pageStartVirtualAddress&&endvaddr<pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
 			}
-			else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
+			else if(vaddr>pageStartVirtualAddress&&endvaddr>=pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=pageEndVirtualAddress-vaddr+1;
 			}
-			else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
+			else if(vaddr<=pageStartVirtualAddress&&endvaddr<pageEndVirtualAddress){
 				addrOffset=0;
-				amount=endVAddr-pageStartVirtualAddress+1;
+				amount=endvaddr-pageStartVirtualAddress+1;
 			}
 
 			else{
@@ -655,9 +655,9 @@ public class UserProcess {
 
 	private int handleExit(int status){
 		if(parent!=null){
-			parent.statusLock.acquire();
-			parent.childExit.put(processID, status);
-			parent.statusLock.release();
+			parent.status.acquire();
+			parent.childrenExitStatus.put(processID, status);
+			parent.status.release();
 
 		}
 		unloadSections();
@@ -678,7 +678,7 @@ public class UserProcess {
 	}
 
 	private int handleJoin(int processID,int statusV){
-		if(pID<0||statusV<0){
+		if(processID<0||statusV<0){
 			return -1;
 		}
 		UserProcess child=null;
@@ -701,18 +701,18 @@ public class UserProcess {
 
 		children.remove(child);
 
-		statusLock.acquire();
-		Integer status=childrenExitStatus.get(child.pID);
-		statusLock.release();
+		status.acquire();
+		Integer stat=childrenExitStatus.get(child.processID);
+		status.release();
 
-		if(status==null){
+		if(stat==null){
 			Lib.debug(dbgProcess, "Join:Cannot find the exit status of the child");
 			return 0;
 		}
 		else{
 
 			byte[] buffer=new byte[4];
-			buffer=Lib.bytesFromInt(status);
+			buffer=Lib.bytesFromInt(stat);
 			int count=writeVirtualMemory(statusV,buffer);
 			if(count==4){
 				return 1;
@@ -869,7 +869,7 @@ public class UserProcess {
 	 * <tr><td>1</td><td><tt>void exit(int status);</tt></td></tr>
 	 * <tr><td>2</td><td><tt>int  exec(char *name, int argc, char **argv);
 	 * 								</tt></td></tr>
-	 * <tr><td>3</td><td><tt>int  join(int pid, int *status);</tt></td></tr>
+	 * <tr><td>3</td><td><tt>int  join(int processID, int *status);</tt></td></tr>
 	 * <tr><td>4</td><td><tt>int  creat(char *name);</tt></td></tr>
 	 * <tr><td>5</td><td><tt>int  open(char *name);</tt></td></tr>
 	 * <tr><td>6</td><td><tt>int  read(int fd, char *buffer, int size);
@@ -928,7 +928,7 @@ public class UserProcess {
 		case syscallExit:
 			return handleExit(a0);
 		}
-		return 0;
+		//return 0;
 	}   
 	/**
 	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
@@ -973,6 +973,7 @@ public class UserProcess {
 	protected OpenFile stdin;
 	protected OpenFile stdout;
 	protected OpenFile[] type;
+	protected OpenFile[] descriptors;
 
 	/** The number of pages in the program's stack. */
 	protected final int stackPages = Config.getInteger("Processor.numStackPages", 8);
@@ -982,13 +983,13 @@ public class UserProcess {
 	protected int argc, argv;
 
 	//Instantiate locks
-	protected Lock countLock = new Lock();
-	protected Lock statusLock = new Lock();
+	protected Lock counterLock;
+	protected Lock status;
 
 	// parents and children list/hash
 	protected UserProcess parent;
 	protected LinkedList<UserProcess> children;
-	protected HashMap<Integer,Integer> childExit;
+	protected HashMap<Integer,Integer> childrenExitStatus;
 
 	//Instantiation for thread(s)
 	protected UThread thread;
@@ -996,8 +997,4 @@ public class UserProcess {
 	//Instantiate counter and processID
 	protected static int counter = 0;
 	protected int processID;
-
-
-
 }
-

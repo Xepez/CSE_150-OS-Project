@@ -4,7 +4,7 @@ package nachos.userprog;
 import nachos.machine.*;
 import nachos.threads.*;
 import java.util.LinkedList;
-import java.util.concurrent.locks.Lock;
+//import java.util.concurrent.locks.Lock;
 
 
 
@@ -35,11 +35,12 @@ public class UserKernel extends ThreadedKernel {
 		});
 
 		offLen = 0;
-		for (offLen = 0; ; ++offLen)
+		for (offLen = 0; ; ++offLen) {
 			if ((Processor.pageSize >> offLen) == 1) {
 				offMask = (1 << offLen) - 1;
 				break;
 			}
+		}
 
 		pageLock = new Lock();
 

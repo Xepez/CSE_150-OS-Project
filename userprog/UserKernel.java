@@ -175,6 +175,7 @@ public class UserKernel extends ThreadedKernel {
 	public static SynchConsole console;
 	// variables
 	private static Lock pageLock;
+	
 	private static int offLen;
 	private static int offMask;
 	//Linked list for open pages

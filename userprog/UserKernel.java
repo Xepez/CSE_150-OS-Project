@@ -41,7 +41,7 @@ public class UserKernel extends ThreadedKernel {
 				break;
 			}
 
-		pageLock = new Lock();
+		
 
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		
@@ -174,6 +174,7 @@ public class UserKernel extends ThreadedKernel {
 	public static SynchConsole console;
 	// variables
 	private static Lock pageLock;
+	pageLock = new Lock();
 	private static int offLen;
 	private static int offMask;
 	//Linked list for open pages

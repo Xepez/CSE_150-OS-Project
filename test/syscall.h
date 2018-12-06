@@ -26,9 +26,61 @@
 #define syscallConnect		11
 #define syscallAccept		12
 
+protected DescriptorController descControl;
+protected static Hashtable<String, Integer> files = new Hashtable<String, Integer>();
+protected static HashSet<String> deleted = new HashSet<String>();
+protected static final int pageSize = Processor.pageSize;
+protected static final char dbgProcess = 'a';
+
 /* Don't want the assembler to see C code, but start.s includes syscall.h. */
 #ifndef START_S
+public class DescriptorController {
+	public OpenFile openf[] = new OpenFile[16];
+	public int add(int index, OpenFile file) {
+		if (index < 0 || index >= 16) return -1;
+		if (openf[index] == null) {
+			openf[index] = file;
+			if (files.get(file.getName()) != null) {
+				files.put(file.getName(), files.get(file.getName()) + 1);
+			}
+			else {
+				files.put(file.getName(), 1);
+			}
+			return index;
+		}
 
+		return -1;
+	}
+	public int add(OpenFile file) {
+		for (int i = 0; i < 16; i++)
+			if (openf[i] == null)return add(i, file);
+		return -1;
+	}
+	public OpenFile get(int fileDescriptor) {
+		if (fileDescriptor < 0 || fileDescriptor >= 16)
+			return null;
+		return openf[fileDescriptor];
+	}
+	public int close(int fileDescriptor) {
+		if (openf[fileDescriptor] == null) {
+			Lib.debug(dbgProcess, "file descriptor " + fileDescriptor + " doesn't exist");
+			return -1;
+		}
+		OpenFile file = openf[fileDescriptor];
+		openf[fileDescriptor] = null;
+		file.close();
+		String fileName = file.getName();
+		if (files.get(fileName) > 1)files.put(fileName, files.get(fileName) - 1);
+		else {
+			files.remove(fileName);
+			if (deleted.contains(fileName)) {
+				deleted.remove(fileName);
+				UserKernel.fileSystem.remove(fileName);
+			}
+		}
+		return 0;
+	}
+}
 /* When a process is created, two streams are already open. File descriptor 0
  * refers to keyboard input (UNIX stdin), and file descriptor 1 refers to
  * display output (UNIX stdout). File descriptor 0 can be read, and file
@@ -61,7 +113,7 @@ int join(int processID, int *status);
  * Returns the new file descriptor, or -1 if an error occurred.
  */
 int creat(char *name){
-	String fileName = readVirtualMemoryString(*name, maxFileNameLength);
+	String fileName = readVirtualMemoryString(*name, 256);
 	if (fileName == null) {
 		Lib.debug(dbgProcess, "Invalid file name pointer");
 		return -1;
@@ -75,7 +127,7 @@ int creat(char *name){
 		Lib.debug(dbgProcess, "Create file failed");
 		return -1;
 	}
-	return descriptorManager.add(file);
+	return descControl.add(file);
 }
 /**
  * Attempt to open the named file and return a file descriptor.
@@ -86,7 +138,7 @@ int creat(char *name){
  * Returns the new file descriptor, or -1 if an error occurred.
  */
 int open(char *name){
-	String fileName = readVirtualMemoryString(*name, maxFileNameLength);
+	String fileName = readVirtualMemoryString(*name, 256);
 	if (fileName == null) {
 		Lib.debug(dbgProcess, "Invalid file name pointer");
 		return -1;
@@ -100,7 +152,7 @@ int open(char *name){
 		Lib.debug(dbgProcess, "File is being deleted");
 		return -1;
 	}
-	return descriptorManager.add(file);
+	return descControl.add(file);
 }
 /**
  * Attempt to read up to count bytes into buffer from the file or stream
@@ -132,7 +184,7 @@ int read(int fileDescriptor, void *buffer, int count){
 		Lib.debug(dbgProcess, "Invalid Buffer");
 		return -1;
 	}
-	OpenFile file = descriptorManager.get(fileDescriptor);
+	OpenFile file = descControl.get(fileDescriptor);
 	if (file == null) {
 		Lib.debug(dbgProcess, "Invalid file descriptor");
 		return -1;
@@ -177,7 +229,7 @@ int write(int fileDescriptor, void *buffer, int count){
 		Lib.debug(dbgProcess, "Invalid Buffer");
 		return -1;
 	}
-	OpenFile file = descriptorManager.get(fileDescriptor);
+	OpenFile file = descControl.get(fileDescriptor);
 	if (file == null) {
 		Lib.debug(dbgProcess, "Invalid file descriptor");
 		return -1;
@@ -208,7 +260,7 @@ int write(int fileDescriptor, void *buffer, int count){
  *
  * Returns 0 on success, or -1 if an error occurred.
  */
-int close(int fileDescriptor) return descriptorManager.close(fileDescriptor);
+int close(int fileDescriptor) return descControl.close(fileDescriptor);
 /**
  * Delete a file from the file system. If no processes have the file open, the
  * file is deleted immediately and the space it was using is made available for
@@ -238,97 +290,7 @@ int unlink(char *name);
 int mmap(int fileDescriptor, char *address);
 int connect(int host, int port);
 int accept(int port);
-public class DescriptorManager {
-	public OpenFile descriptor[] = new OpenFile[maxFileDescriptorNum];
-	public int add(int index, OpenFile file) {
-		if (index < 0 || index >= maxFileDescriptorNum) return -1;
-		if (descriptor[index] == null) {
-			descriptor[index] = file;
-			if (files.get(file.getName()) != null) {
-				files.put(file.getName(), files.get(file.getName()) + 1);
-			}
-			else {
-				files.put(file.getName(), 1);
-			}
-			return index;
-		}
-
-		return -1;
-	}
-	public int add(OpenFile file) {
-		for (int i = 0; i < maxFileDescriptorNum; i++)
-			if (descriptor[i] == null)return add(i, file);
-		return -1;
-	}
-	public int close(int fileDescriptor) {
-		if (descriptor[fileDescriptor] == null) {
-			Lib.debug(dbgProcess, "file descriptor " + fileDescriptor + " doesn't exist");
-			return -1;
-		}
-		OpenFile file = descriptor[fileDescriptor];
-		descriptor[fileDescriptor] = null;
-		file.close();
-		String fileName = file.getName();
-		if (files.get(fileName) > 1)files.put(fileName, files.get(fileName) - 1);
-		else {
-			files.remove(fileName);
-			if (deleted.contains(fileName)) {
-				deleted.remove(fileName);
-				UserKernel.fileSystem.remove(fileName);
-			}
-		}
-		return 0;
-	}
-	public OpenFile get(int fileDescriptor) {
-		if (fileDescriptor < 0 || fileDescriptor >= maxFileDescriptorNum)
-			return null;
-		return descriptor[fileDescriptor];
-	}
-}
 
 #endif /* START_S */
 
 #endif /* SYSCALL_H */
-	/** The program being run by this process. */
-	protected Coff coff;
-
-	/** This process's page table. */
-	protected TranslationEntry[] pageTable;
-	/** The number of contiguous pages occupied by the program. */
-	protected int numPages;
-
-	/** The number of pages in the program's stack. */
-	protected final int stackPages = 8;
-
-	protected int initialPC, initialSP;
-	protected int argc, argv;
-
-	protected int PID;
-
-	/** The value which this process returns. */
-	protected int status;
-
-	protected Semaphore finished;
-
-	protected HashSet<Integer> childProcesses;
-
-	protected DescriptorManager descriptorManager;
-	
-	protected boolean exitNormally = true;
-
-	protected static final int maxFileDescriptorNum = 16;
-
-	/** All of the opening files and how many processes refer to them */
-	protected static Hashtable<String, Integer> files = new Hashtable<String, Integer>();
-
-	/** The files are going to be deleted */
-	protected static HashSet<String> deleted = new HashSet<String>();
-
-	protected static final int pageSize = Processor.pageSize;
-	protected static final char dbgProcess = 'a';
-	protected static final int maxFileNameLength = 256;
-
-	protected static int processNumber = 0;
-
-	protected static Hashtable<Integer, UserProcess> allProcesses = new Hashtable<Integer, UserProcess>();
-	protected static Hashtable<Integer, UserProcess> diedProcesses = new Hashtable<Integer, UserProcess>();

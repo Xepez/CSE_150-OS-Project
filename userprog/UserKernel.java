@@ -3,8 +3,9 @@ package nachos.userprog;
 
 import nachos.machine.*;
 import nachos.threads.*;
-
 import java.util.LinkedList;
+//import java.util.concurrent.locks.Lock;
+
 
 
 /**
@@ -33,23 +34,23 @@ public class UserKernel extends ThreadedKernel {
 			}
 		});
 
-		offsetLen = 0;
-		while(true){
-			if ((Processor.pageSize >> offsetLen) == 1) {
-				offsetMask = (1 << offsetLen) - 1;
+		offLen = 0;
+		for (offLen = 0; ; ++offLen) {
+			if ((Processor.pageSize >> offLen) == 1) {
+				offMask = (1 << offLen) - 1;
 				break;
 			}
-			offsetLen++;
 		}
 
 		pageLock = new Lock();
+
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		
-		openPages = new LinkedList<Integer>();
+		pagesOpen = new LinkedList<Integer>();
 		
-		for (int i = 0; i < numPhysPages; i++){
-			openPages.add(new Integer(i));
-		}
+		for (int i = 0; i < numPhysPages; ++i)
+			
+			pagesOpen.add(new Integer(i));
 	}
 
 	/**
@@ -132,38 +133,38 @@ public class UserKernel extends ThreadedKernel {
 		super.terminate();
 	}
 	
-	public static int getFreePage() {
-		int page = -1;
+	public static int makePage() {
+		int ret = -1;
 
 		pageLock.acquire();
-		if (openPages.size() > 0)
-			page = openPages.removeFirst().intValue();
+		if (pagesOpen.size() > 0)
+			ret = pagesOpen.removeFirst().intValue();
 		(pageLock).release();
 
-		return page;
+		return ret;
 	}
 	
-	public static boolean delPage(int ppn) {
+	public static boolean delPage(int nnp) {
+		boolean ret = false;
 
 		pageLock.acquire();
-		boolean didAdd = openPages.add(new Integer(ppn));
+		pagesOpen.add(new Integer(nnp));
+		ret = true;
 		pageLock.release();
 
-		return didAdd;
+		return ret;
 	
 	}
 	public static int getoffset(int dra) {
-		return dra & offsetMask;
+		return dra & offMask;
 	}
 	
 	public static int getVirtualPageNumber(int dra) {
-		Machine.processor();
-		return Processor.pageFromAddress(dra);
+		return Machine.processor().pageFromAddress(dra);
 	}
 	
 	public static int makeAddress(int np, int off) {
-		Machine.processor();
-		return Processor.makeAddress(np, off);
+		return Machine.processor().makeAddress(np, off);
 	}
 	
 	public String absoluteFileName(String s) {
@@ -172,11 +173,13 @@ public class UserKernel extends ThreadedKernel {
 
 	/** Globally accessible reference to the synchronized console. */
 	public static SynchConsole console;
+	// variables
 	private static Lock pageLock;
-	private static int offsetLen;
-	private static int offsetMask;
+	
+	private static int offLen;
+	private static int offMask;
 	//Linked list for open pages
-	private static LinkedList<Integer> openPages;
+	private static LinkedList<Integer> pagesOpen;
     //dummy variables to make javac smarter
 	private static Coff dummy1 = null;
 

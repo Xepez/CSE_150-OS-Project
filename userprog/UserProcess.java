@@ -23,30 +23,34 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
-		int numPages = Machine.processor().getNumPhysPages();
-		pageTable = new TranslationEntry[numPages];
-		for (int i = 0; i < numPages; ++i){
+		int size=Machine.processor().getNumPhysPages();
+		pageTable = new TranslationEntry[size];
+		for (int i = 0; i < size; ++i){
 			pageTable[i] = new TranslationEntry(i, 0, false, false, false, false);
 		}
-		
-		type = new OpenFile[16];
-		boolean currentStatus = Machine.interrupt().disable();
-		
-		counterLock = new Lock();
+
+		counterLock=new Lock();
 		counterLock.acquire();
-		processID = counter++;
 		counterLock.release();
+		status=new Lock();
+
+		type=new OpenFile[16];
+		boolean inStatus=Machine.interrupt().disable();
+		Machine.interrupt().restore(inStatus);
+
+		processID=counter++;
 
 		stdin = UserKernel.console.openForReading();
 		stdout = UserKernel.console.openForWriting();
 		type[0]=stdin;
 		type[1]=stdout;
-		
-		Machine.interrupt().restore(currentStatus);
-		status = new Lock();
-		parent = null;
-		children = new LinkedList<UserProcess>();
-		childrenExitStatus = new HashMap<Integer,Integer>();
+
+		parent=null;
+		children=new LinkedList<UserProcess>();
+		childrenExitStatus=new HashMap<Integer,Integer>();
+
+
+
 	}
 
 	/**
@@ -102,15 +106,15 @@ public class UserProcess {
 		return processID;
 	}
 
-	public boolean allocate(int vpn, int desiredPages, boolean readOnly) {
-		
+	protected boolean allocate(int vpn, int desiredPages, boolean readOnly) {
+		//    	System.out.println("hehe");
 		LinkedList<TranslationEntry> allocated = new LinkedList<TranslationEntry>();
 
 		for (int i = 0; i < desiredPages; ++i) {
 			if (vpn >= pageTable.length)
 				return false;
 
-			int ppn = UserKernel.getFreePage();
+			int ppn = UserKernel.makePage();
 			if (ppn == -1) {
 				Lib.debug(dbgProcess, "\tcannot allocate new page");
 
@@ -132,7 +136,7 @@ public class UserProcess {
 		return true;
 	}
 
-	public void releaseResource() {
+	protected void releaseResource() {
 		for (int i = 0; i < pageTable.length; ++i)
 			if (pageTable[i].valid) {
 				UserKernel.delPage(pageTable[i].ppn);
@@ -225,23 +229,26 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr + length - 1 > Machine.processor().makeAddress(numPages-1, pageSize-1)){
+		if (vaddr < 0 || vaddr +length-1>Machine.processor().makeAddress(numPages-1, pageSize-1)){
 			Lib.debug(dbgProcess, "readVirtualMemory:Invalid virtual Address");
 			return 0;
 		}
 
-		int transferredCounter = 0;
-		int endvaddr = vaddr + length - 1;		
 
-		int startVirtualPage = Machine.processor().pageFromAddress(vaddr);
-		int endVirtualPage = Machine.processor().pageFromAddress(endvaddr);
+		int transferredCounter=0;
+		int endvaddr=vaddr+length-1;
+		
 
-		for(int i = startVirtualPage;i <= endVirtualPage; i++){
+		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
+		int endVirtualPage=Machine.processor().pageFromAddress(endvaddr);
+		
+
+		for(int i=startVirtualPage;i<=endVirtualPage;i++){
 			if(!lookUpPageTable(i).valid){
 				break;
 			}
-		int pageStartVirtualAddress = Machine.processor().makeAddress(i, 0);
-		int pageEndVirtualAddress = Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
 		int addrOffset;
 		int amount=0;
 
@@ -262,7 +269,7 @@ public class UserProcess {
 				addrOffset=0;
 				amount=pageSize;
 			}
-			int paddr = Machine.processor().makeAddress(lookUpPageTable(i).ppn, addrOffset);
+			int paddr=Machine.processor().makeAddress(lookUpPageTable(i).ppn, addrOffset);
 			System.arraycopy(memory, paddr, data, offset+transferredCounter, amount);
 			transferredCounter+=amount;
 			//		pageTable[i].used=true;
@@ -314,44 +321,50 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr +length-1 > Machine.processor().makeAddress(numPages-1, pageSize-1)){
+		if (vaddr < 0 || vaddr +length-1>Machine.processor().makeAddress(numPages-1, pageSize-1)){
 			Lib.debug(dbgProcess, "Memory:Invalid virtual address");
 			return 0;
 		}
 
 		int transferredCounter=0;
-		int endVAddr = vaddr+length-1;
+		int endVAddr=vaddr+length-1;
 		
 
-		int endVirtualPage = Machine.processor().pageFromAddress(endVAddr);
-		int startVirtualPage = Machine.processor().pageFromAddress(vaddr);
+		int endVirtualPage=Machine.processor().pageFromAddress(endVAddr);
+		int startVirtualPage=Machine.processor().pageFromAddress(vaddr);
 		
 
-		for(int i = startVirtualPage; i<= endVirtualPage; i++){
+		for(int i=startVirtualPage;i<=endVirtualPage;i++){
 
 			if(!lookUpPageTable(i).valid||lookUpPageTable(i).readOnly){
 				break;
 			}
-			
-		int pageEndVirtualAddress = Machine.processor().makeAddress(i, pageSize-1);
-		int pageStartVirtualAddress = Machine.processor().makeAddress(i, 0);
-		int addrOffset = 0;
-		int amount = pageSize;
+		int pageEndVirtualAddress=Machine.processor().makeAddress(i, pageSize-1);
+		int pageStartVirtualAddress=Machine.processor().makeAddress(i, 0);
+		int addrOffset;
+		int amount=0;
 			if(vaddr>pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=length;
 			}
+
 			else if(vaddr<=pageStartVirtualAddress&&endVAddr<pageEndVirtualAddress){
 				addrOffset=0;
 				amount=endVAddr-pageStartVirtualAddress+1;
 			}
+
 			else if(vaddr>pageStartVirtualAddress&&endVAddr>=pageEndVirtualAddress){
 				addrOffset=vaddr-pageStartVirtualAddress;
 				amount=pageEndVirtualAddress-vaddr+1;
 			}
 
-			int physaddr = Machine.processor().makeAddress(lookUpPageTable(i).vpn, addrOffset);
-			System.arraycopy(data, offset+transferredCounter, memory, physaddr, amount);
+			else{
+				addrOffset=0;
+				amount=pageSize;
+			}
+
+			int paddr=Machine.processor().makeAddress(lookUpPageTable(i).vpn, addrOffset);
+			System.arraycopy(data, offset+transferredCounter, memory, paddr, amount);
 
 			transferredCounter+=amount;
 
@@ -484,10 +497,10 @@ public class UserProcess {
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
 
-				TranslationEntry trans = lookUpPageTable(vpn);
-				if (trans == null)
+				TranslationEntry te = lookUpPageTable(vpn);
+				if (te == null)
 					return false;
-				section.loadPage(i, trans.ppn);
+				section.loadPage(i, te.ppn);
 			}
 		}
 
@@ -499,14 +512,12 @@ public class UserProcess {
 	 */
 	protected void unloadSections() {
 		releaseResource();
-		
-		for(int i = 0; i < 16; i++){
-			if(type[i] != null){
+		for(int i=0;i<16;i++){
+			if(type[i]!=null){
 				type[i].close();
-				type[i] = null;
+				type[i]=null;
 			}	
 		}
-		
 		coff.close();
 
 	}
@@ -519,18 +530,19 @@ public class UserProcess {
 	 * initialize all other registers to 0.
 	 */
 	public void initRegisters() {
+		Processor processor = Machine.processor();
 
 		// by default, everything's 0
 		for (int i = 0; i < Processor.numUserRegisters; i++)
-			Machine.processor().writeRegister(i, 0);
+			processor.writeRegister(i, 0);
 
 		// initialize PC and SP according
-		Machine.processor().writeRegister(Machine.processor().regPC, initialPC);
-		Machine.processor().writeRegister(Machine.processor().regSP, initialSP);
+		processor.writeRegister(Processor.regPC, initialPC);
+		processor.writeRegister(Processor.regSP, initialSP);
 
 		// initialize the first two argument registers to argc and argv
-		Machine.processor().writeRegister(Machine.processor().regA0, argc);
-		Machine.processor().writeRegister(Machine.processor().regA1, argv);
+		processor.writeRegister(Processor.regA0, argc);
+		processor.writeRegister(Processor.regA1, argv);
 	}
 
 	/**
@@ -922,23 +934,24 @@ public class UserProcess {
 	/**
 	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
 	 * . The <i>cause</i> argument identifies which exception occurred; see the
-	 * <tt>Machine.processor().exceptionZZZ</tt> constants.
+	 * <tt>Processor.exceptionZZZ</tt> constants.
 	 * 
 	 * @param cause
 	 *            the user exception that occurred.
 	 */
 
 	public void handleException(int cause) {
+		Processor processor = Machine.processor();
 
 		switch (cause) {
 		case Processor.exceptionSyscall:
-			int result = handleSyscall(Machine.processor().readRegister(Machine.processor().regV0),
-					Machine.processor().readRegister(Machine.processor().regA0), Machine.processor()
-					.readRegister(Machine.processor().regA1), Machine.processor()
-					.readRegister(Machine.processor().regA2), Machine.processor()
-					.readRegister(Machine.processor().regA3));
-			Machine.processor().writeRegister(Processor.regV0, result);
-			Machine.processor().advancePC();
+			int result = handleSyscall(processor.readRegister(Processor.regV0),
+					processor.readRegister(Processor.regA0), processor
+					.readRegister(Processor.regA1), processor
+					.readRegister(Processor.regA2), processor
+					.readRegister(Processor.regA3));
+			processor.writeRegister(Processor.regV0, result);
+			processor.advancePC();
 			break;
 
 		default:

@@ -34,10 +34,10 @@ public class UserKernel extends ThreadedKernel {
 			}
 		});
 
-		OffLen = 0;
-		for (OffLen = 0; ; ++OffLen)
-			if ((Processor.pageSize >> OffLen) == 1) {
-				offMask = (1 << OffLen) - 1;
+		offLen = 0;
+		for (offLen = 0; ; ++offLen)
+			if ((Processor.pageSize >> offLen) == 1) {
+				offMask = (1 << offLen) - 1;
 				break;
 			}
 
@@ -154,7 +154,7 @@ public class UserKernel extends ThreadedKernel {
 		return ret;
 	
 	}
-	public static int getOffset(int dra) {
+	public static int getoffset(int dra) {
 		return dra & offMask;
 	}
 	
@@ -174,7 +174,8 @@ public class UserKernel extends ThreadedKernel {
 	public static SynchConsole console;
 	// variables
 	private static Lock pageLock;
-	private static int OffLen, offMask;
+	private static int offLen;
+	private static int offMask;
 	//Linked list for open pages
 	private static LinkedList<Integer> pagesOpen;
     //dummy variables to make javac smarter

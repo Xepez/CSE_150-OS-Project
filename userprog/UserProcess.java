@@ -34,17 +34,16 @@ public class UserProcess {
 		counterLock.release();
 		status=new Lock();
 
-		descriptors=new OpenFile[16];
+		type=new OpenFile[16];
 		boolean inStatus=Machine.interrupt().disable();
 		Machine.interrupt().restore(inStatus);
 
 		processID=counter++;
 
-		type[0]=stdin;
-		type[1]=stdout;
 		stdin = UserKernel.console.openForReading();
 		stdout = UserKernel.console.openForWriting();
-
+		type[0]=stdin;
+		type[1]=stdout;
 
 		parent=null;
 		children=new LinkedList<UserProcess>();

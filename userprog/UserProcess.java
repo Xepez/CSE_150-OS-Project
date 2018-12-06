@@ -2,8 +2,7 @@ package nachos.userprog;
 
 import nachos.machine.*;
 import nachos.threads.*;
-import java.util.HashSet;
-import java.util.Hashtable;
+
 import java.io.EOFException;
 import java.util.*;
 
@@ -24,27 +23,27 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
-		int size=Machine.processor().getNumPhysPages();
+		int size = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[size];
 		for (int i = 0; i < size; ++i){
 			pageTable[i] = new TranslationEntry(i, 0, false, false, false, false);
 		}
 
-		counterLock=new Lock();
+		counterLock = new Lock();
 		counterLock.acquire();
 		counterLock.release();
 		status=new Lock();
 
-		type=new OpenFile[16];
+		type = new OpenFile[16];
 		boolean inStatus=Machine.interrupt().disable();
 		Machine.interrupt().restore(inStatus);
 
-		processID=counter++;
+		processID = counter++;
 
 		stdin = UserKernel.console.openForReading();
 		stdout = UserKernel.console.openForWriting();
-		type[0]=stdin;
-		type[1]=stdout;
+		type[0] = stdin;
+		type[1] = stdout;
 
 		parent=null;
 		children=new LinkedList<UserProcess>();
@@ -107,26 +106,25 @@ public class UserProcess {
 		return processID;
 	}
 
-	protected boolean allocate(int vpn, int desiredPages, boolean readOnly) {
-		//    	System.out.println("hehe");
+	public boolean allocate(int vpn, int desiredPages, boolean readOnly) {
 		LinkedList<TranslationEntry> allocated = new LinkedList<TranslationEntry>();
 
 		for (int i = 0; i < desiredPages; ++i) {
 			if (vpn >= pageTable.length)
 				return false;
 
-			int ppn = UserKernel.makePage();
+			int ppn = UserKernel.allocatePage();
 			if (ppn == -1) {
 				Lib.debug(dbgProcess, "\tcannot allocate new page");
 
 				for (TranslationEntry te: allocated) {
 					pageTable[te.vpn] = new TranslationEntry(te.vpn, 0, false, false, false, false);
-					UserKernel.delPage(te.ppn);
+					UserKernel.releasePage(te.ppn);
 					--numPages;
 				}
-
 				return false;
-			} else {
+			} 
+			else {
 				TranslationEntry a = new TranslationEntry(vpn + i,
 						ppn, true, readOnly, false,false);
 				allocated.add(a);
@@ -140,7 +138,7 @@ public class UserProcess {
 	protected void releaseResource() {
 		for (int i = 0; i < pageTable.length; ++i)
 			if (pageTable[i].valid) {
-				UserKernel.delPage(pageTable[i].ppn);
+				UserKernel.releasePage(pageTable[i].ppn);
 				pageTable[i] = new TranslationEntry(pageTable[i].vpn, 0, false, false, false, false);
 			}
 		numPages = 0;
@@ -201,8 +199,19 @@ public class UserProcess {
 			return null;
 	}
 
-	protected TranslationEntry translate(int vaddr) {
-		return lookUpPageTable(UserKernel.getVirtualPageNumber(vaddr));
+	
+	public TranslationEntry getTransEnt(int vpn, boolean isWrite) {
+		if (vpn >= numPages || vpn < 0)
+			return null;
+		TranslationEntry te = pageTable[vpn];
+		if (te == null)
+			return null;
+		if (te.readOnly && isWrite)
+			return null;
+		te.used = true;
+		if (isWrite)
+			te.dirty = true;
+		return te;
 	}
 
 	/**
@@ -229,32 +238,32 @@ public class UserProcess {
 
 		byte[] memory = Machine.processor().getMemory();
 
-		int firstVPN = Processor.pageFromAddress(vaddr), firstOffset = Processor
-				.offsetFromAddress(vaddr), lastVPN = Processor
-				.pageFromAddress(vaddr + length);
+		int startVPN = Processor.pageFromAddress(vaddr);
+		int startOffset = Processor.offsetFromAddress(vaddr);
+		int endVPN = Processor.pageFromAddress(vaddr + length);
 
-		TranslationEntry entry = getTranslationEntry(firstVPN, false);
+		TranslationEntry entry = getTransEnt(startVPN, false);
 
 		if (entry == null)
 			return 0;
 
-		int amount = Math.min(length, pageSize - firstOffset);
-		System.arraycopy(memory, Processor.makeAddress(entry.ppn, firstOffset),
-				data, offset, amount);
-		offset += amount;
+		int bytes = Math.min(length, pageSize - startOffset);
+		System.arraycopy(memory, Processor.makeAddress(entry.ppn, startOffset),
+				data, offset, bytes);
+		offset = offset + bytes;
 
-		for (int i = firstVPN + 1; i <= lastVPN; i++) {
-			entry = getTranslationEntry(i, false);
+		for (int i = startVPN + 1; i <= endVPN; i++) {
+			entry = getTransEnt(i, false);
 			if (entry == null)
-				return amount;
-			int len = Math.min(length - amount, pageSize);
+				return bytes;
+			int size = Math.min(length - bytes, pageSize);
 			System.arraycopy(memory, Processor.makeAddress(entry.ppn, 0), data,
-					offset, len);
-			offset += len;
-			amount += len;
+					offset, size);
+			offset = offset + size;
+			bytes = bytes + size;
 		}
 
-		return amount;
+		return bytes;
 	}
 
 	/**
@@ -295,47 +304,33 @@ public class UserProcess {
 
 		byte[] memory = Machine.processor().getMemory();
 
-		int firstVPN = Processor.pageFromAddress(vaddr), firstOffset = Processor
-				.offsetFromAddress(vaddr), lastVPN = Processor
-				.pageFromAddress(vaddr + length);
+		int startVPN = Processor.pageFromAddress(vaddr);
+		int startOffset = Processor.offsetFromAddress(vaddr);
+		int endVPN = Processor.pageFromAddress(vaddr + length);
 
-		TranslationEntry entry = getTranslationEntry(firstVPN, true);
+		TranslationEntry entry = getTransEnt(startVPN, true);
 
 		if (entry == null)
 			return 0;
 
-		int amount = Math.min(length, pageSize - firstOffset);
-		System.arraycopy(data, offset, memory, Processor.makeAddress(entry.ppn,
-				firstOffset), amount);
-		offset += amount;
+		int bytes = Math.min(length, pageSize - startOffset);
+		System.arraycopy(data, offset, memory, Processor.makeAddress(entry.ppn, startOffset), bytes);
+		offset = offset + bytes;
 
-		for (int i = firstVPN + 1; i <= lastVPN; i++) {
-			entry = getTranslationEntry(i, true);
+		for (int i = startVPN + 1; i <= endVPN; i++) {
+			entry = getTransEnt(i, true);
 			if (entry == null)
-				return amount;
-			int len = Math.min(length - amount, pageSize);
+				return bytes;
+			int len = Math.min(length - bytes, pageSize);
 			System.arraycopy(data, offset, memory, Processor.makeAddress(
 					entry.ppn, 0), len);
-			offset += len;
-			amount += len;
+			offset = offset + len;
+			bytes = bytes + len;
 		}
 
-		return amount;
+		return bytes;
 	}
-	
-	public TranslationEntry getTranslationEntry(int vpn, boolean isWrite) {
-		if (vpn < 0 || vpn >= numPages)
-			return null;
-		TranslationEntry result = pageTable[vpn];
-		if (result == null)
-			return null;
-		if (result.readOnly && isWrite)
-			return null;
-		result.used = true;
-		if (isWrite)
-			result.dirty = true;
-		return result;
-	}
+
 
 	/**
 	 * Load the executable with the specified name into this process, and

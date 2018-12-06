@@ -133,26 +133,22 @@ public class UserKernel extends ThreadedKernel {
 		super.terminate();
 	}
 	
-	public static int makePage() {
-		int ret = -1;
+	public static int allocatePage() {
+		int page = -1;
 
 		pageLock.acquire();
 		if (pagesOpen.size() > 0)
-			ret = pagesOpen.removeFirst().intValue();
+			page = pagesOpen.removeFirst().intValue();
 		(pageLock).release();
 
-		return ret;
+		return page;
 	}
 	
-	public static boolean delPage(int nnp) {
-		boolean ret = false;
+	public static void releasePage(int nnp) {
 
 		pageLock.acquire();
 		pagesOpen.add(new Integer(nnp));
-		ret = true;
 		pageLock.release();
-
-		return ret;
 	
 	}
 	public static int getoffset(int dra) {

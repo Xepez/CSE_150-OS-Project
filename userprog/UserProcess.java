@@ -115,13 +115,13 @@ public class UserProcess {
 			if (vpn >= pageTable.length)
 				return false;
 
-			int ppn = UserKernel.newPage();
+			int ppn = UserKernel.makePage();
 			if (ppn == -1) {
 				Lib.debug(dbgProcess, "\tcannot allocate new page");
 
 				for (TranslationEntry te: allocated) {
 					pageTable[te.vpn] = new TranslationEntry(te.vpn, 0, false, false, false, false);
-					UserKernel.deletePage(te.ppn);
+					UserKernel.delPage(te.ppn);
 					--numPages;
 				}
 
@@ -140,7 +140,7 @@ public class UserProcess {
 	protected void releaseResource() {
 		for (int i = 0; i < pageTable.length; ++i)
 			if (pageTable[i].valid) {
-				UserKernel.deletePage(pageTable[i].ppn);
+				UserKernel.delPage(pageTable[i].ppn);
 				pageTable[i] = new TranslationEntry(pageTable[i].vpn, 0, false, false, false, false);
 			}
 		numPages = 0;

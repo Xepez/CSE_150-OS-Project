@@ -1,3 +1,3 @@
-# CSE150-Project1
+# CSE150-Project
 
-Project2 - userprog folder
+- OS Projects 1 & 2
